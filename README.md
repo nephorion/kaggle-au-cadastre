@@ -138,7 +138,7 @@ join** instead of by key (see `--spatial-join`).
 The project is managed with [uv](https://docs.astral.sh/uv/). Python 3.10+ is required.
 
 ```bash
-uv sync                    # core deps + dev tools (pytest, ruff, geopandas)
+uv sync                    # core deps + dev tools (pytest, ruff, geopandas, kaggle CLI)
 uv sync --extra geo        # add geopandas/shapely as a runtime extra only
 ```
 
@@ -243,17 +243,25 @@ Then [publish to Kaggle](#publishing-to-kaggle) (`kaggle datasets version` for a
 
 ## Publishing to Kaggle
 
-The output folder is a ready-to-upload Kaggle dataset. With the
-[Kaggle CLI](https://github.com/Kaggle/kaggle-api) installed and `~/.kaggle/kaggle.json` in place:
+The output folder is a ready-to-upload Kaggle dataset. The [Kaggle CLI](https://github.com/Kaggle/kaggle-api)
+is a dev dependency, so `uv sync` installs it and `uv run kaggle` runs it.
+
+1. Get an API token: on kaggle.com go to **Settings → API → Create New Token** and save the downloaded
+   `kaggle.json` as `~/.kaggle/kaggle.json` (Windows: `C:\Users\<you>\.kaggle\kaggle.json`). It holds
+   your username and key; keep it out of the repository.
+2. Choose the dataset id `<your-kaggle-username>/<slug>`. Your username is the last part of your
+   profile address (`kaggle.com/<username>`); the slug is any lower-case name with hyphens.
+3. Write the id into the metadata and upload:
 
 ```bash
 uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
-kaggle datasets create -p cadastre_out              # first upload
-kaggle datasets version -p cadastre_out -m "Refresh" # later updates
+uv run kaggle datasets create -p cadastre_out                 # first upload
+uv run kaggle datasets version -p cadastre_out -m "Refresh"   # later updates
 ```
 
-The README is used as the dataset description, and the per-column descriptions appear in Kaggle's
-data explorer.
+`dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
+id, title, licence, the README as the dataset description, and a description of every column (shown in
+Kaggle's data explorer).
 
 ## Project layout
 
