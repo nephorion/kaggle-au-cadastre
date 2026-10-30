@@ -25,7 +25,7 @@ def test_shared_column_order(act_parcels):
     rewrite_parcels(act_parcels, pd.Series(dtype=str), pd.Series(dtype=bool), NO_LINKS)
     cols = pd.read_csv(act_parcels, nrows=0).columns.tolist()
     assert cols[:len(LEADING_COLUMNS)] == list(LEADING_COLUMNS)
-    assert cols[len(LEADING_COLUMNS):] == ["key_dist_div_sec_blk", "key_dist_blk", "BLOCK", "wkt"]
+    assert cols[len(LEADING_COLUMNS):] == ["key_dist_div_sec_blk", "key_dist_blk", "BLOCK", "gnaf_locality", "wkt"]
 
 
 def test_geometry_groups(act_parcels):
@@ -52,3 +52,12 @@ def test_rerun_replaces_existing_columns(act_parcels):
         assert df.columns.tolist().count(col) == 1
     assert df["gnaf_legal_parcel_id"].tolist() == ["B", ""]
     assert df["gnaf_address_detail_pids"].tolist() == ["", ""]
+
+
+def test_gnaf_locality_working_column(act_parcels):
+    rewrite_parcels(act_parcels, pd.Series(dtype=str), pd.Series(dtype=bool), NO_LINKS,
+                    localities=pd.Series({"1": "BRADDON"}))
+    rewrite_parcels(act_parcels, pd.Series(dtype=str), pd.Series(dtype=bool), NO_LINKS,
+                    localities=pd.Series({"2": "TURNER"}))                  # rerun replaces it
+    df = pd.read_csv(act_parcels, dtype=str, keep_default_na=False)
+    assert df["gnaf_locality"].tolist() == ["", "TURNER"]

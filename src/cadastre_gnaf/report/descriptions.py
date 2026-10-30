@@ -22,6 +22,31 @@ PARCEL_COLUMNS = {
     "wkt": ("string", "Parcel boundary as WKT POLYGON or MULTIPOLYGON, EPSG:4326 (lon/lat)."),
 }
 
+HARMONISED_COLUMNS = {
+    "lot": ("string", "Lot number (ACT: block number)."),
+    "section": ("string", "Section number."),
+    "plan": ("string", "Plan the lot is on, with its type prefix, e.g. `DP246488`, `PS936577`, `SP12345`."),
+    "parcel_label": ("string", "The state's own human-readable parcel identifier, e.g. NSW `1//DP12345`, "
+                               r"VIC `1\PS936577`, QLD `4SE1`, TAS `207296/1`, ACT `TUGG/COND/160/32`."),
+    "title_ref": ("string", "Certificate of title reference as `volume/folio` (TAS, ACT)."),
+    "status": ("string", "`current`, `proposed` or `retired`."),
+    "tenure": ("string", "`freehold`, `lease`, `crown`, `council`, `commonwealth` or `other`."),
+    "is_strata": ("boolean", "True for strata / volumetric lots (lots in a building or above/below ground)."),
+    "is_road": ("boolean", "True for road and footway parcels."),
+    "is_multipart": ("boolean", "True if the parcel polygon has more than one part."),
+    "area_m2": ("number", "Area of the polygon in m², computed in Australian Albers equal-area (EPSG:3577). "
+                          "Comparable across states."),
+    "perimeter_m": ("number", "Perimeter of the polygon in metres, computed in EPSG:3577."),
+    "stated_area_m2": ("number", "Area stated or measured by the state (survey / title area), in m²."),
+    "locality": ("string", "Suburb or locality (upper case): the most common locality of the parcel's G-NAF "
+                           "addresses, else the state's own locality field."),
+    "feature_name": ("string", "Name of the parcel or feature (e.g. a park, reserve or property name)."),
+    "source_feature_id": ("string", "The state's persistent feature id, stable across releases (e.g. NSW "
+                                    "`cadid`, VIC `parcel_pfi`)."),
+    "source_created": ("date", "Date the state created the parcel record."),
+    "source_last_updated": ("date", "Date the state last changed the parcel record."),
+}
+
 KEY_COLUMNS = {
     "key_lot_sec_plannum": "Candidate key lot/section/plan number, e.g. `13/31993` or `11/C/3625` "
                            "(G-NAF's documented NSW format).",

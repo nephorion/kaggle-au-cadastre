@@ -1,11 +1,12 @@
 import pandas as pd
 
-from cadastre_gnaf.gnaf import read_address_parcels, read_address_points
+from cadastre_gnaf.gnaf import read_address_localities, read_address_parcels, read_address_points
 from cadastre_gnaf.keys import key_names
 from cadastre_gnaf.linking.choose_keys import choose_keys
 from cadastre_gnaf.linking.fallback_keys import fallback_keys
 from cadastre_gnaf.linking.geometry_groups import geometry_groups
 from cadastre_gnaf.linking.key_links import key_links
+from cadastre_gnaf.linking.parcel_localities import parcel_localities
 from cadastre_gnaf.linking.read_parcel_keys import read_parcel_keys
 from cadastre_gnaf.linking.rewrite_parcels import rewrite_parcels
 from cadastre_gnaf.linking.score_keys import score_keys
@@ -42,6 +43,7 @@ def finalise_state(config, gnaf, state, source):
                                            links["address_detail_pid"], label=state, keep=reps)
             links = pd.concat([links, extra], ignore_index=True)
         links["source_oid"] = links["source_oid"].astype(str)
+        localities = parcel_localities(links, read_address_localities(gnaf, state))
         summ["gnaf_addresses"] = len(g)
         summ["addresses_linked"] = int(links["address_detail_pid"].nunique())
         summ["address_link_rate"] = round(summ["addresses_linked"] / max(1, len(g)), 4)
@@ -49,8 +51,9 @@ def finalise_state(config, gnaf, state, source):
     else:
         chosen, matched = fallback_keys(kd)
         links = pd.DataFrame(columns=["address_detail_pid", "source_oid", "method"], dtype=str)
+        localities = None
 
-    rewrite_parcels(path, chosen, matched, links, groups, config.compression)
+    rewrite_parcels(path, chosen, matched, links, groups, localities, config.compression)
     write_progress(config, state, {**read_progress(config, state), "gnaf": summ})   # for later summaries
     print(f"[{state}] finalised {path.name}: {summ}")
     return summ

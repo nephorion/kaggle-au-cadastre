@@ -1,6 +1,8 @@
 import datetime as dt
 
-from cadastre_gnaf.constants import LEADING_COLUMNS
+from cadastre_gnaf.constants import HARMONISED_COLUMNS, LEADING_COLUMNS
+from cadastre_gnaf.publish.mapping_markdown import mapping_markdown
+from cadastre_gnaf.report.descriptions import HARMONISED_COLUMNS as HARMONISED
 from cadastre_gnaf.report.descriptions import PARCEL_COLUMNS
 
 TITLE = "Australian Land Parcels (Cadastre) + G-NAF"
@@ -33,8 +35,10 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
            "one Parquet and one CSV file per state. Every parcel carries the ids of its **G-NAF** addresses "
            "(Geoscape's Geocoded National Address File), so it joins straight to any copy of G-NAF with no "
            "link table.", "",
-           "Each parcel row has:", "",
-           "- the parcel's attributes as published by the state",
+           "Each state is in its own files, and every file has the same layout. Each parcel row has:", "",
+           "- harmonised columns that mean the same in every state: lot, section, plan, tenure, status, "
+           "area, locality and more",
+           "- the parcel's attributes as published by the state (`src_*`)",
            "- `gnaf_legal_parcel_id`: the parcel key in G-NAF `LEGAL_PARCEL_ID` format, and `gnaf_key_matched`",
            "- `gnaf_address_detail_pids`: list of G-NAF `ADDRESS_DETAIL_PID`s on the parcel (null if none), "
            "with `gnaf_address_count` and `gnaf_link_methods`",
@@ -61,13 +65,25 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
                 "the parcel polygon) instead of by key.", ""]
 
     out += ["## Columns", "",
-            "Every parcels file, for every state and in both formats, starts with the same columns in the same "
-            "order:", "",
+            "Every parcels file, for every state and in both formats, has the same layout:", "",
+            "1. **Identity, G-NAF and geometry-group columns** (the same in every state)",
+            "2. **Harmonised columns** (the same in every state; null where a state does not publish the "
+            "information)",
+            "3. **`src_*` columns**: the state's own attributes as published, renamed to lower-case snake case "
+            "(`TENURE_TY` → `src_tenure_ty`). These differ between states.",
+            "4. **`wkt`**: the polygon", "",
+            "### 1. Identity, G-NAF and geometry groups", "",
             "| Column | Type | Description |", "|---|---|---|"]
     out += [f"| `{c}` | {PARCEL_COLUMNS[c][0]} | {PARCEL_COLUMNS[c][1]} |" for c in LEADING_COLUMNS]
-    out += ["", "They are followed by the state's candidate keys (`key_*`) and the attributes published by the "
-            "state, which differ between states, and finally `wkt`. Every column of every file is described in "
-            "`data_dictionary.md`.", "",
+    out += ["", "### 2. Harmonised columns", "",
+            "| Column | Type | Description |", "|---|---|---|"]
+    out += [f"| `{c}` | {HARMONISED[c][0]} | {HARMONISED[c][1]} |" for c in HARMONISED_COLUMNS]
+    out += ["", "Where each harmonised column comes from, per state (`polygon` = computed from the geometry; "
+            "– = not available, always null):", "", mapping_markdown(), "",
+            "### 3. Source columns", "",
+            "Every `src_*` column of every file, with the state's own description where it publishes one, is "
+            "in `data_dictionary.md` / `data_dictionary.csv`. The states' ObjectID copies and service-computed "
+            "`Shape__Area` / `Shape__Length` fields are left out (see `source_oid`, `area_m2`, `perimeter_m`).", "",
             "## Using the data on Kaggle", "",
             "Add this dataset to a notebook (**Add Input**), then:", "",
             "### Load parcels without geometry (fast)", "",
@@ -82,6 +98,23 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             f'parcels = pd.read_parquet(f"{{DATA}}/{ex}_parcels.parquet", columns=cols)',
             "parcels.head()",
             "```", "",
+            "### All states in one table", "",
+            "The identity, G-NAF and harmonised columns are the same in every file, so states stack directly:", "",
+            "```python",
+            "import glob",
+            "",
+            'common = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_address_count", "lot", "plan",',
+            '          "parcel_label", "status", "tenure", "is_strata", "area_m2", "locality"]',
+            "australia = pd.concat([pd.read_parquet(f, columns=common)",
+            '                       for f in sorted(glob.glob(f"{DATA}/*_parcels.parquet"))], ignore_index=True)',
+            "",
+            "# median parcel size (m²) by state and tenure, leaving out retired and proposed parcels",
+            'live = australia[~australia["status"].isin(["retired", "proposed"])]',
+            'live.groupby(["state", "tenure"], dropna=False)["area_m2"].median().unstack()',
+            "```", "",
+            "Harmonised columns are null where a state does not publish the information, so check the mapping "
+            "table above before comparing states (for example, only QLD, TAS and ACT have `tenure` for every "
+            "parcel).", "",
             "### Join G-NAF addresses", "",
             "`gnaf_address_detail_pids` is a list per parcel. Explode it to one row per address and join "
             "`ADDRESS_DETAIL` from G-NAF (attach a G-NAF dataset, or use the release from data.gov.au):", "",

@@ -15,9 +15,17 @@ GEOMETRY_GROUP_COLUMNS = ("geometry_group_id", "geometry_group_size")
 BASE_COLUMNS = frozenset({"state", "source_oid", "point_lon", "point_lat", "wkt", *GNAF_COLUMNS,
                           *GEOMETRY_GROUP_COLUMNS})
 
-# Columns every published parcels file starts with, in this order; the state's candidate keys and
-# source attributes follow, and `wkt` comes last.
+# Columns every published parcels file starts with, in this order.
 LEADING_COLUMNS = ("state", "source_oid", *GNAF_COLUMNS, *GEOMETRY_GROUP_COLUMNS, "point_lon", "point_lat")
+
+# Harmonised columns, the same in every state (null where a state has no such information); they
+# follow LEADING_COLUMNS. The state's own attributes come next as `src_*` columns, and `wkt` last.
+HARMONISED_COLUMNS = ("lot", "section", "plan", "parcel_label", "title_ref", "status", "tenure", "is_strata",
+                      "is_road", "is_multipart", "area_m2", "perimeter_m", "stated_area_m2", "locality",
+                      "feature_name", "source_feature_id", "source_created", "source_last_updated")
+
+# Working columns of the staged CSVs that are not published.
+WORKING_COLUMNS = ("gnaf_locality",)
 
 # Separator of list values (address ids, link methods) in the staged CSVs; lists in the Parquet output.
 LIST_SEPARATOR = "|"

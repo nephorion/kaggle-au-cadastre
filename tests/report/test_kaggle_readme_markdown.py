@@ -70,3 +70,10 @@ def test_shared_columns_and_stacked_parcels():
     assert "## Columns" in md and "| `geometry_group_id` | integer |" in md
     assert md.index("| `state` |") < md.index("| `gnaf_address_detail_pids` |") < md.index("| `point_lat` |")
     assert 'footprints = p[p["source_oid"] == p["geometry_group_id"]]' in md
+
+
+def test_harmonised_columns_documented():
+    md = readme()
+    assert "### 2. Harmonised columns" in md and "| `area_m2` | number |" in md
+    assert "| Column | NSW | VIC | QLD | TAS | ACT | WA |" in md
+    assert 'glob.glob(f"{DATA}/*_parcels.parquet")' in md

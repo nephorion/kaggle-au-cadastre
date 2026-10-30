@@ -39,3 +39,15 @@ def test_prefixed_source_field_uses_original_name():
 
 def test_unknown_field_type_left_for_inference():
     assert describe_column("OTHER", "QLD", FIELDS) == (None, "QLD source attribute `OTHER`.")
+
+
+def test_harmonised_columns():
+    assert describe_column("area_m2", "QLD", {})[0] == "number"
+    assert describe_column("tenure", "QLD", {})[0] == "string"
+
+
+def test_src_prefixed_snake_case_names():
+    fields = {"TENURE_TY": {"name": "TENURE_TY", "alias": "Tenure Type", "type": "esriFieldTypeString"}}
+    expected = ("string", "TAS source attribute `TENURE_TY`: Tenure Type.")
+    assert describe_column("src_tenure_ty", "TAS", fields) == expected
+    assert describe_column("src_unknown", "TAS", fields) == (None, "TAS source attribute `unknown`.")

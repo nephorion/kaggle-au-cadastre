@@ -8,7 +8,7 @@ The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload datas
 
 | File | Contents |
 |------|----------|
-| `<STATE>_parcels.parquet` | One row per parcel: source attributes, candidate parcel keys, the G-NAF columns below, a point inside the parcel and WKT geometry (EPSG:4326) |
+| `<STATE>_parcels.parquet` | One row per parcel in the [layout below](#file-layout): G-NAF columns, harmonised columns, the state's own attributes and WKT geometry (EPSG:4326) |
 | `<STATE>_parcels.csv` | The same columns as CSV (list columns as `\|`-separated text; `.csv.gz` with `--compress`) |
 | `summary.csv` | Per-state counts, G-NAF match rates per candidate key, and licence |
 | `ATTRIBUTION.md` | Source and licence list to ship with the data |
@@ -16,22 +16,99 @@ The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload datas
 | `README.md` | Dataset README for Kaggle: files, coverage, usage examples, licences |
 | `dataset-metadata.json` | Kaggle dataset metadata (title, licence, per-column descriptions) for `kaggle datasets create` |
 
-G-NAF columns in each parcels file:
+## File layout
 
+Each state is published in its own files (`<STATE>_parcels.parquet` and `<STATE>_parcels.csv`), and every
+file has the same layout, so states can be read with the same code or stacked into one table:
+
+1. **Identity, G-NAF and geometry-group columns**, the same in every state
+2. **Harmonised columns**, the same in every state, null where the state does not publish the information
+3. **`src_*` columns**: the state's own attributes as published, renamed to lower-case snake case
+   (`TENURE_TY` → `src_tenure_ty`). These differ between states.
+4. **`wkt`**: the polygon (EPSG:4326)
+
+Columns are typed in Parquet (integers, floats, booleans, dates, lists). In the CSV, lists are
+`|`-separated text.
+
+### 1. Identity, G-NAF and geometry groups
+
+- `state`, `source_oid` (the parcel's ObjectID in the source service)
 - `gnaf_legal_parcel_id`: the parcel key in G-NAF `LEGAL_PARCEL_ID` format
 - `gnaf_key_matched`: `True` if that key actually exists in G-NAF
 - `gnaf_address_count`: number of G-NAF addresses linked to the parcel
 - `gnaf_address_detail_pids`: list of the linked G-NAF `ADDRESS_DETAIL_PID`s (null if none)
 - `gnaf_link_methods`: how they were linked, `legal_parcel_id` and/or `spatial_within` (null if none)
-
-Geometry-group columns (for stacked parcels such as strata lots that share one polygon):
-
-- `geometry_group_id`: the lowest `source_oid` among parcels with an identical polygon
+- `geometry_group_id`: the lowest `source_oid` among parcels with an identical polygon (stacked strata lots)
 - `geometry_group_size`: how many parcels share that polygon (1 = unique)
+- `point_lon`, `point_lat`: a point guaranteed to lie inside the parcel
 
-Every state's files start with the same columns in the same order (`state`, `source_oid`, the G-NAF
-and geometry-group columns, `point_lon`, `point_lat`), then the state's candidate keys and source
-attributes, with `wkt` last. Columns are typed (integers, floats, booleans, dates, lists) from the source layers' field metadata.
+### 2. Harmonised columns
+
+| Column | Type | Description |
+|---|---|---|
+| `lot` | string | Lot number (ACT: block number). |
+| `section` | string | Section number. |
+| `plan` | string | Plan the lot is on, with its type prefix, e.g. `DP246488`, `PS936577`, `SP12345`. |
+| `parcel_label` | string | The state's own human-readable parcel identifier, e.g. NSW `1//DP12345`, VIC `1\PS936577`, QLD `4SE1`, TAS `207296/1`, ACT `TUGG/COND/160/32`. |
+| `title_ref` | string | Certificate of title reference as `volume/folio` (TAS, ACT). |
+| `status` | string | `current`, `proposed` or `retired`. |
+| `tenure` | string | `freehold`, `lease`, `crown`, `council`, `commonwealth` or `other`. |
+| `is_strata` | boolean | True for strata / volumetric lots (lots in a building or above/below ground). |
+| `is_road` | boolean | True for road and footway parcels. |
+| `is_multipart` | boolean | True if the parcel polygon has more than one part. |
+| `area_m2` | number | Area of the polygon in m², computed in Australian Albers equal-area (EPSG:3577). Comparable across states. |
+| `perimeter_m` | number | Perimeter of the polygon in metres, computed in EPSG:3577. |
+| `stated_area_m2` | number | Area stated or measured by the state (survey / title area), in m². |
+| `locality` | string | Suburb or locality (upper case): the most common locality of the parcel's G-NAF addresses, else the state's own locality field. |
+| `feature_name` | string | Name of the parcel or feature (e.g. a park, reserve or property name). |
+| `source_feature_id` | string | The state's persistent feature id, stable across releases (e.g. NSW `cadid`, VIC `parcel_pfi`). |
+| `source_created` | date | Date the state created the parcel record. |
+| `source_last_updated` | date | Date the state last changed the parcel record. |
+
+Where each harmonised column comes from, per state (`polygon` = computed from the geometry; – = the
+state does not publish it, so the column is always null there):
+
+| Column | NSW | VIC | QLD | TAS | ACT | WA |
+|---|---|---|---|---|---|---|
+| `lot` | `src_lotnumber` | `src_parcel_lot_number` | `src_lot` | – | `src_block_number` | – |
+| `section` | `src_sectionnumber` | `src_parcel_sec` | – | – | `src_section_number` | – |
+| `plan` | `src_planlabel` | `src_parcel_plan_number` | `src_plan` | – | `DP` + `src_deposited_plan_no` | – |
+| `parcel_label` | `src_lotidstring` | `src_parcel_spi` | `src_lotplan` | `src_volume` + `/` + `src_folio` | `src_district_short` + `/` + `src_division_short` + `/` + `src_section_number` + `/` + `src_block_number` | – |
+| `title_ref` | – | – | – | `src_volume` + `/` + `src_folio` | `src_volume_folio` with `:` → `/` | – |
+| `status` | always `current` | `src_parcel_status` (A → current, P → proposed) | `src_parcel_state` (Created → current, Existing → current) | always `current` | `src_current_lifecycle_stage` (REGISTERED → current, APPROVED → proposed, PROPOSED → proposed, RETIRED → retired) | – |
+| `tenure` | – | `src_parcel_crown_status` (C → crown, G → null) | `src_tenure`, translated (codes below) | `src_tenure_ty`, translated (codes below) | always `lease` | – |
+| `is_strata` | – | – | `src_is_volumetric` matches `^Yes$` | `src_strata_lev` matches `^(?!Not Applicable$)` | `src_stratum_datum_id` is present | – |
+| `is_road` | – | `src_parcel_road` matches `^Y$` | – | `src_cad_type2` matches `Road\|Footway` | – | – |
+| `is_multipart` | polygon | polygon | polygon | polygon | polygon | polygon |
+| `area_m2` | polygon | polygon | polygon | polygon | polygon | polygon |
+| `perimeter_m` | polygon | polygon | polygon | polygon | polygon | polygon |
+| `stated_area_m2` | `src_planlotarea` in `src_planlotareaunits` units, as m² | – | `src_statedarea` in `src_statedareaunit` units, as m² | `src_meas_area`, as m² | `src_block_leased_area`, as m² | – |
+| `locality` | G-NAF | G-NAF | G-NAF, else `src_locality` | G-NAF | G-NAF, else `src_division_name` | G-NAF |
+| `feature_name` | – | – | `src_feat_name` | `src_feat_name`, else `src_prop_name` | – | – |
+| `source_feature_id` | `src_cadid` | `src_parcel_pfi` | `src_uniqueid` | `src_cid` | `src_id` | – |
+| `source_created` | `src_createdate` | `src_parcel_pfi_created` | – | – | – | – |
+| `source_last_updated` | `src_lastupdate` | `src_parcel_ufi_created` | `src_last_edited_date` | – | `src_last_update` | – |
+
+**QLD `tenure`** from `src_tenure`: Freehold → freehold; Lands Lease → lease; Mines Tenure → lease; Reserve → crown; State Land → crown; National Park → crown; State Forest → crown; Timber Reserve → crown; Water Resource → crown; Railway → crown; Housing Land → crown; Port and Harbours Boards → crown; Industrial Estates → crown; Commonwealth Acquisition → commonwealth, anything else → other.
+
+**TAS `tenure`** from `src_tenure_ty`: Freehold Title → freehold; Horizontal Strata → freehold; Vertical Strata → freehold; Body Corporate → freehold; Share Title → freehold; Vertical Subdivision → freehold; Crown Land → crown; Tidal Crown Land → crown; Marine Crown Land → crown; Council → council; Commonwealth of Australia → commonwealth; Unknown → null; Not Applicable → null, anything else → other.
+
+The mapping is defined in [field_map.py](src/cadastre_gnaf/publish/field_map.py) as small declarative
+specs (a source column, a code translation, a join, an area with units…). To change how a state fills a
+harmonised column, edit its entry there and run `cadastre-gnaf --step publish`. The tables in this README
+and in the dataset README are generated from the same specs (`cadastre_gnaf.publish.mapping_markdown`).
+
+### 3. Source columns
+
+The `src_*` columns keep every attribute the state publishes, except:
+
+- the layer's ObjectID copy (`OBJECTID` / `objectid`), which is `source_oid`
+- `Shape__Area` / `Shape__Length` and similar, which each service computes in its own projection; use
+  `area_m2` / `perimeter_m` instead
+- the candidate G-NAF keys (`key_*`), working columns of the matching step; the chosen key is
+  `gnaf_legal_parcel_id`, and the match rate of every candidate is in `summary.csv`
+
+Every column of every file is described in the generated `data_dictionary.md`.
 
 Working files live in the work folder (`--work`, default `./cadastre_work`): the staged CSVs in
 `staging/`, resume progress in `staging/_progress/` and the G-NAF zip. Downloads are **resumable**,
@@ -118,10 +195,12 @@ The process exits with code 1 if any state failed to download. Re-run the same c
    in `--spatial-join` also get a spatial join for addresses that the key did not link: each address
    goes to the smallest polygon containing its geocode, and to one parcel per stack of identical
    polygons (the stack's `geometry_group_id`).
-4. **Publish** (`cadastre_gnaf.publish`): converts each staged CSV to a zstd-compressed Parquet file,
-   typing every column from the data dictionary (the source layers' field types, lists for the
-   G-NAF address ids), and copies the CSV alongside it. Both are built in the work folder and moved
-   into the output folder only when complete.
+   It also records each parcel's most common G-NAF locality and groups identical polygons.
+4. **Publish** (`cadastre_gnaf.publish`): turns each staged CSV into the [shared layout](#file-layout):
+   fills the harmonised columns from the state's fields (`field_map.py`), measures area and perimeter in
+   Australian Albers (EPSG:3577), renames the state's attributes to `src_*` and drops the redundant ones.
+   It then writes a zstd-compressed Parquet file, typed from the data dictionary, and a CSV with the
+   same columns. Both are built in the work folder and moved into the output folder only when complete.
 5. **Report** (`cadastre_gnaf.report`): writes `summary.csv` and `ATTRIBUTION.md`, then the dataset
    docs: a data dictionary built from the Parquet schemas, sample values and the source layers'
    field metadata (aliases), a Kaggle README and `dataset-metadata.json`.
@@ -155,11 +234,13 @@ src/cadastre_gnaf/
 ├── sources/             Source dataclass and the SOURCES registry
 ├── arcgis/              make_session, arcgis_get, layer_info, feature_count, oid_bounds, fetch_range
 ├── storage/             parcels_path, parquet_path, read/write_progress, append_csv
-├── tabular/             output_columns, rows_from_items, features_to_items, epoch_ms_to_date
+├── tabular/             output_columns, rows_from_items, features_to_items, epoch_ms_to_date, source_column_name
 ├── download/            page_size, fetch_in_order, download_arcgis_state, load_local_state, run_downloads
 ├── gnaf/                GnafSource, open_gnaf, open_table, read_table, read_address_*, download_file
-├── linking/             score_keys, choose_keys, key_links, spatial_links, rewrite_parcels, finalise_state, run_gnaf
-├── publish/             arrow_type, to_arrow, write_parquet, publish_state, run_publish
+├── linking/             score_keys, choose_keys, key_links, spatial_links, geometry_groups, parcel_localities,
+│                        rewrite_parcels, finalise_state, run_gnaf
+├── publish/             field_map (per-state harmonisation), field_value, geometry_measures, harmonised_columns,
+│                        published_frame, to_arrow, write_outputs, publish_state, run_publish, mapping_markdown
 └── report/              summary_rows, attribution_markdown, write_summary, data dictionary and Kaggle docs
 tests/                   mirrors src/ (one test_<module>.py per module)
 ```
