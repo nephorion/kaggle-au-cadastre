@@ -56,7 +56,8 @@ def test_csv_has_the_same_columns_and_rows(config):
 def test_only_the_published_files_land_in_out_dir(config):
     stage(config)
     publish_state(config, None, "ACT", SOURCE)
-    assert sorted(p.name for p in config.out_dir.iterdir()) == ["ACT_parcels.csv", "ACT_parcels.parquet"]
+    published = sorted(p.relative_to(config.out_dir).as_posix() for p in config.out_dir.rglob("*") if p.is_file())
+    assert published == ["csv/ACT_parcels.csv", "parquet/ACT_parcels.parquet"]
     assert not list(config.staging_dir.glob("*.tmp"))
 
 

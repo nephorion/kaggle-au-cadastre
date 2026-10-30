@@ -35,7 +35,8 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
 
     out = [f"# {TITLE}", "", f"*{SUBTITLE}.*", "",
            f"{total:,} land parcels from the open state cadastres of {', '.join(states) or 'Australia'}, "
-           "one Parquet and one CSV file per state. Every parcel carries the ids of its **G-NAF** addresses "
+           "one file per state in `parquet/` and the same in `csv/`. Every parcel carries the ids of its **G-NAF** "
+           "addresses "
            "(Geoscape's Geocoded National Address File), so it joins straight to any copy of G-NAF with no "
            "link table.", "",
            "Each state is in its own files, and every file has the same layout. Each parcel row has:", "",
@@ -98,7 +99,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "",
             'cols = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_key_matched", "gnaf_address_count",',
             '        "gnaf_address_detail_pids", "point_lon", "point_lat"]',
-            f'parcels = pd.read_parquet(f"{{DATA}}/{ex}_parcels.parquet", columns=cols)',
+            f'parcels = pd.read_parquet(f"{{DATA}}/parquet/{ex}_parcels.parquet", columns=cols)',
             "parcels.head()",
             "```", "",
             "### All states in one table", "",
@@ -108,8 +109,8 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "",
             'common = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_address_count", "lot", "plan",',
             '          "parcel_label", "status", "tenure", "is_strata", "area_m2", "locality"]',
-            "australia = pd.concat([pd.read_parquet(f, columns=common)",
-            '                       for f in sorted(glob.glob(f"{DATA}/*_parcels.parquet"))], ignore_index=True)',
+            'files = sorted(glob.glob(f"{DATA}/parquet/*_parcels.parquet"))',
+            "australia = pd.concat([pd.read_parquet(f, columns=common) for f in files], ignore_index=True)",
             "",
             "# median parcel size (m²) by state and tenure, leaving out retired and proposed parcels",
             'live = australia[~australia["status"].isin(["retired", "proposed"])]',
@@ -151,7 +152,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "```python",
             "import geopandas as gpd",
             "",
-            f'df = pd.read_parquet(f"{{DATA}}/{ex}_parcels.parquet",',
+            f'df = pd.read_parquet(f"{{DATA}}/parquet/{ex}_parcels.parquet",',
             '                     columns=["source_oid", "gnaf_legal_parcel_id", "wkt"])',
             'gdf = gpd.GeoDataFrame(df.drop(columns="wkt"), geometry=gpd.GeoSeries.from_wkt(df["wkt"]), crs=4326)',
             "",
@@ -166,9 +167,10 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "gdf[gdf.contains(pt)]",
             "```", "",
             "### CSV instead of Parquet", "",
-            "Every `.parquet` file has a `.csv` twin with the same columns. Lists are `|`-separated text there:", "",
+            "Every file in `parquet/` has a twin in `csv/` with the same columns. Lists are `|`-separated text "
+            "there:", "",
             "```python",
-            f'csv = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=cols, dtype={{"gnaf_legal_parcel_id": str}})',
+            f'csv = pd.read_csv(f"{{DATA}}/csv/{ex}_parcels.csv", usecols=cols, dtype={{"gnaf_legal_parcel_id": str}})',
             'csv["gnaf_address_detail_pids"] = csv["gnaf_address_detail_pids"].str.split("|")',
             "```", "",
             "### Stacked parcels (identical polygons)", "",
@@ -177,7 +179,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "many share it. Addresses linked spatially go to one parcel per stack, the one whose `source_oid` "
             "equals `geometry_group_id`.", "",
             "```python",
-            'p = pd.read_parquet(f"{DATA}/WA_parcels.parquet",',
+            'p = pd.read_parquet(f"{DATA}/parquet/WA_parcels.parquet",',
             '                    columns=["source_oid", "geometry_group_id", "geometry_group_size",',
             '                             "gnaf_address_count"])',
             "",
@@ -193,7 +195,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "### Large states", "",
             "NSW and VIC have several million rows each. Select columns and filter rows while reading:", "",
             "```python",
-            'nsw = pd.read_parquet(f"{DATA}/NSW_parcels.parquet",',
+            'nsw = pd.read_parquet(f"{DATA}/parquet/NSW_parcels.parquet",',
             '                      columns=["source_oid", "gnaf_legal_parcel_id", "gnaf_address_detail_pids"],',
             '                      filters=[("gnaf_address_count", ">", 0)])',
             "```", "",

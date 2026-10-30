@@ -8,7 +8,7 @@ from cadastre_gnaf.storage import parcels_path, parquet_path, published_csv_path
 
 
 def publish_state(config, session, state, source, chunk=200_000):
-    """Publish a state's staged CSV as <STATE>_parcels.parquet and .csv in the shared layout.
+    """Publish a state's staged CSV as parquet/<STATE>_parcels.parquet and csv/<STATE>_parcels.csv.
 
     Columns are typed from the data dictionary. Returns the rows written, or None without a staged CSV.
     """
@@ -20,6 +20,7 @@ def publish_state(config, session, state, source, chunk=200_000):
     kinds = {c: describe_column(c, state, fields)[0] for c in header.columns}
     out, csv_out = parquet_path(config, state), published_csv_path(config, state)
     out.parent.mkdir(parents=True, exist_ok=True)
+    csv_out.parent.mkdir(parents=True, exist_ok=True)
     frames = (published_frame(c, state)
               for c in pd.read_csv(staged, dtype=str, keep_default_na=False, chunksize=chunk))
     rows = write_outputs(frames, kinds, out, csv_out, config.staging_dir, config.compression)

@@ -6,7 +6,8 @@ from cadastre_gnaf.storage import parquet_path, published_csv_path
 
 
 def dataset_files(config):
-    """The data files in the output folder: name, state, kind, rows, size in MB and a description.
+    """The data files in the output folder: path (relative, e.g. `parquet/NSW_parcels.parquet`), state, kind,
+    rows, size in MB and a description.
 
     Covers every state with a published file, not just the states of this run. A state's CSV has the
     same columns as its Parquet file; its `same_as` names that file.
@@ -18,11 +19,12 @@ def dataset_files(config):
             continue
         rows = pq.ParquetFile(path).metadata.num_rows
         text = f"{st} land parcels: source attributes, G-NAF key and address ids, interior point and WKT geometry"
-        files.append({"file": path.name, "state": st, "kind": "parcels", "rows": rows,
+        files.append({"file": path.relative_to(config.out_dir).as_posix(), "state": st, "kind": "parcels", "rows": rows,
                       "size_mb": round(path.stat().st_size / 1e6, 1), "description": text})
         if csv.exists():
-            files.append({"file": csv.name, "state": st, "kind": "parcels_csv", "rows": rows,
-                          "size_mb": round(csv.stat().st_size / 1e6, 1), "same_as": path.name,
+            files.append({"file": csv.relative_to(config.out_dir).as_posix(), "state": st, "kind": "parcels_csv",
+                          "rows": rows, "size_mb": round(csv.stat().st_size / 1e6, 1),
+                          "same_as": path.relative_to(config.out_dir).as_posix(),
                           "description": f"{text} (CSV; list columns are pipe-separated)"})
     summary = config.out_dir / "summary.csv"
     if summary.exists():

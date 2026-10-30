@@ -38,7 +38,7 @@ def test_coverage_skips_states_without_parcels():
 def test_examples_use_kaggle_path_and_smallest_state():
     md = readme()
     assert 'DATA = "/kaggle/input/au-parcels"' in md
-    assert 'pd.read_parquet(f"{DATA}/ACT_parcels.parquet", columns=cols)' in md
+    assert 'pd.read_parquet(f"{DATA}/parquet/ACT_parcels.parquet", columns=cols)' in md
     assert "geopandas" in md and "links" not in md
 
 
@@ -68,7 +68,7 @@ def test_gnaf_dataset_is_configurable():
 
 def test_csv_example():
     md = readme()
-    assert 'pd.read_csv(f"{DATA}/ACT_parcels.csv"' in md and '.str.split("|")' in md
+    assert 'pd.read_csv(f"{DATA}/csv/ACT_parcels.csv"' in md and '.str.split("|")' in md
 
 
 def test_shared_columns_and_stacked_parcels():
@@ -82,4 +82,4 @@ def test_harmonised_columns_documented():
     md = readme()
     assert "### 2. Harmonised columns" in md and "| `area_m2` | number |" in md
     assert "| Column | NSW | VIC | QLD | TAS | ACT | WA |" in md
-    assert 'glob.glob(f"{DATA}/*_parcels.parquet")' in md
+    assert 'glob.glob(f"{DATA}/parquet/*_parcels.parquet")' in md

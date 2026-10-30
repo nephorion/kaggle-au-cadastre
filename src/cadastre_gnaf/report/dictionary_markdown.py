@@ -11,7 +11,7 @@ def dictionary_markdown(rows, files, built=None):
     about = {f["file"]: f for f in files}
     out = ["# Data dictionary", "",
            "Every column of every file in this dataset. The same content is in `data_dictionary.csv`.",
-           "Each `<STATE>_parcels.csv` has the same columns as its `.parquet` file; list columns are written "
+           "Each `csv/<STATE>_parcels.csv` has the same columns as its `parquet/` file; list columns are written "
            "as `|`-separated text.",
            "Coordinates are EPSG:4326 (WGS 84 / GDA2020 lon/lat). Empty cells mean the value is missing.", ""]
     for name in dict.fromkeys(r["file"] for r in rows):

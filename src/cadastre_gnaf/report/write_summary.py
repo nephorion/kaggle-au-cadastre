@@ -14,7 +14,7 @@ def write_summary(config, summaries, sources=SOURCES):
     (config.out_dir / "ATTRIBUTION.md").write_text(attribution_markdown(rows), encoding="utf-8")
 
     print(summary.to_string(index=False))
-    for f in sorted(config.out_dir.glob("*")):
+    for f in sorted(config.out_dir.rglob("*")):
         if f.is_file():
-            print(f"{f.stat().st_size/1e6:10.1f} MB  {f.name}")
+            print(f"{f.stat().st_size/1e6:10.1f} MB  {f.relative_to(config.out_dir).as_posix()}")
     return summary

@@ -32,6 +32,7 @@ def dataset_out(config):
     """An output folder holding a published ACT parcels file, summary.csv and ATTRIBUTION.md."""
     out = config.out_dir
     out.mkdir(parents=True)
+    parquet_path(config, "ACT").parent.mkdir()
     pq.write_table(PARCELS, parquet_path(config, "ACT"))
     (out / "summary.csv").write_text(SUMMARY, encoding="utf-8", newline="")
     (out / "ATTRIBUTION.md").write_text("# Data sources and licences\n\n- **ACT**: (c) ACT. Source: http://act\n"

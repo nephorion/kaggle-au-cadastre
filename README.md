@@ -8,8 +8,8 @@ The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload datas
 
 | File | Contents |
 |------|----------|
-| `<STATE>_parcels.parquet` | One row per parcel in the [layout below](#file-layout): G-NAF columns, harmonised columns, the state's own attributes and WKT geometry (EPSG:4326) |
-| `<STATE>_parcels.csv` | The same columns as CSV (list columns as `\|`-separated text; `.csv.gz` with `--compress`) |
+| `parquet/<STATE>_parcels.parquet` | One row per parcel in the [layout below](#file-layout): G-NAF columns, harmonised columns, the state's own attributes and WKT geometry (EPSG:4326) |
+| `csv/<STATE>_parcels.csv` | The same columns as CSV (list columns as `\|`-separated text; `.csv.gz` with `--compress`) |
 | `summary.csv` | Per-state counts, G-NAF match rates per candidate key, and licence |
 | `ATTRIBUTION.md` | Source and licence list to ship with the data |
 | `data_dictionary.md` / `data_dictionary.csv` | Every column of every file: type, description and an example value |
@@ -18,7 +18,7 @@ The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload datas
 
 ## File layout
 
-Each state is published in its own files (`<STATE>_parcels.parquet` and `<STATE>_parcels.csv`), and every
+Each state is published in its own files (`parquet/<STATE>_parcels.parquet` and `csv/<STATE>_parcels.csv`), and every
 file has the same layout, so states can be read with the same code or stacked into one table:
 
 1. **Identity, G-NAF and geometry-group columns**, the same in every state
@@ -256,9 +256,13 @@ is a dev dependency, so `uv sync` installs it and `uv run kaggle` runs it.
 
 ```bash
 uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
-uv run kaggle datasets create -p cadastre_out                 # first upload
-uv run kaggle datasets version -p cadastre_out -m "Refresh"   # later updates
+uv run kaggle datasets create -p cadastre_out --dir-mode zip                 # first upload
+uv run kaggle datasets version -p cadastre_out --dir-mode zip -m "Refresh"   # later updates
 ```
+
+`--dir-mode zip` is required: the data files are in the `parquet/` and `csv/` subfolders, which the
+CLI skips by default. It zips each folder for the upload (the CSVs compress well), and Kaggle unpacks
+them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/<slug>/parquet/NSW_parcels.parquet`.
 
 `dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
 id, title, licence, the README as the dataset description, and a description of every column (shown in
