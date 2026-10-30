@@ -11,11 +11,25 @@ def _project(coords):
     return np.column_stack([x, y])
 
 
+def _repaired(geoms):
+    """make_valid that keeps polygons polygonal; a geometry GEOS cannot repair becomes None (null measures)."""
+    try:
+        return shapely.make_valid(geoms, method="structure", keep_collapsed=False)
+    except shapely.errors.GEOSException:                # repair one by one so one bad polygon cannot sink a chunk
+        out = np.empty(len(geoms), dtype=object)
+        for i, g in enumerate(geoms):
+            try:
+                out[i] = shapely.make_valid(g, method="structure", keep_collapsed=False)
+            except shapely.errors.GEOSException:
+                out[i] = None
+        return out
+
+
 def geometry_measures(wkt):
     """WKT polygons (EPSG:4326) -> area_m2, perimeter_m and is_multipart as text ("" where there is no polygon).
 
     Measured in Australian Albers (EPSG:3577), so areas are comparable across states. Invalid polygons are
-    repaired first so self-intersections do not distort the area.
+    repaired first so self-intersections do not distort the area; one GEOS cannot repair gets null measures.
     """
     w = pd.Series(wkt, dtype=object).fillna("").astype(str)
     has = (w != "").to_numpy()
@@ -26,7 +40,8 @@ def geometry_measures(wkt):
     ok = ~shapely.is_missing(geoms)
     parts = shapely.get_num_geometries(geoms)                      # as published, before any repair
     bad = ok & ~shapely.is_valid(geoms)
-    geoms[bad] = shapely.make_valid(geoms[bad])
+    geoms[bad] = _repaired(geoms[bad])
+    ok &= ~shapely.is_missing(geoms)
     projected = shapely.transform(geoms, _project)
     area, length = shapely.area(projected), shapely.length(projected)
     out.loc[has, "area_m2"] = np.where(ok, np.char.mod("%.1f", np.nan_to_num(area)), "")
