@@ -52,5 +52,6 @@ def download_arcgis_state(config, session, state, source):
         rate = (rows_total - rows_start) / max(1, time.time() - t0)
         print(f"\r[{state}] {rows_total:,}/{cnt:,} rows  ({rate:,.0f}/s)", end="", flush=True)
     write_progress(config, state, {"next": a, "rows": rows_total, "expected": cnt, "done": True,
-                                   "columns": cols, "finished": dt.datetime.now().isoformat()})
+                                   "columns": cols, "finished": dt.datetime.now().isoformat(),
+                                   "fields": [{k: f.get(k) for k in ("name", "alias", "type")} for f in fields]})
     print(f"\n[{state}] done: {rows_total:,} rows -> {out}")

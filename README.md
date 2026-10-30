@@ -12,6 +12,9 @@ For every state you get:
 | `<STATE>_gnaf_address_parcel_links.csv` | Address → parcel link table (`address_detail_pid`, `legal_parcel_id`, `source_oid`, `method`) |
 | `summary.csv` | Per-state counts, G-NAF match rates per candidate key, and licence |
 | `ATTRIBUTION.md` | Source and licence list to ship with the data |
+| `data_dictionary.md` / `data_dictionary.csv` | Every column of every file: type, description and an example value |
+| `README.md` | Dataset README for Kaggle: files, coverage, usage examples, licences |
+| `dataset-metadata.json` | Kaggle dataset metadata (title, licence, per-column descriptions) for `kaggle datasets create` |
 
 G-NAF columns added to each parcels CSV:
 
@@ -59,6 +62,7 @@ download and key matching run without them.
 uv run cadastre-gnaf                                    # everything, all open states
 uv run cadastre-gnaf --states NSW VIC --step download   # download only
 uv run cadastre-gnaf --step gnaf                        # G-NAF matching only (after downloading)
+uv run cadastre-gnaf --step docs --kaggle-id me/au-cadastre   # rebuild README + data dictionary only
 uv run cadastre-gnaf --compress --workers 8 --out D:/cadastre
 uv run cadastre-gnaf --local SA=/data/sa/Parcel_Cadastre.shp --states SA
 uv run python -m cadastre_gnaf --help                   # same CLI via the module
@@ -67,7 +71,7 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--states` | all | States to build (SA/NT need `--local`) |
-| `--step` | `all` | `download`, `gnaf`, or `all` |
+| `--step` | `all` | `download`, `gnaf`, `all`, or `docs` (only rebuild the dataset docs) |
 | `--out` | `./cadastre_out` | Output folder |
 | `--work` | `./cadastre_work` | Scratch folder (G-NAF zip, about 1.5 GB) |
 | `--compress` | off | Write `.csv.gz` |
@@ -81,6 +85,7 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | `--spatial-join` | `WA` | States that also get a point-in-polygon address join |
 | `--local STATE=PATH` | none | Licensed file (any format geopandas reads) instead of a web service |
 | `--token STATE=TOKEN` | none | ArcGIS token for a subscription service (e.g. a SLIP layer) |
+| `--kaggle-id` | `your-username/australian-cadastre-gnaf` | Kaggle dataset id written to `dataset-metadata.json` and used in the README's paths |
 
 The process exits with code 1 if any state failed to download. Re-run the same command to resume.
 
@@ -98,7 +103,23 @@ The process exits with code 1 if any state failed to download. Re-run the same c
    picks the first matching candidate per parcel, writes the address link table and rewrites the
    parcels CSV with the G-NAF columns. States listed in `--spatial-join` also get a spatial join for
    addresses that the key did not link.
-4. **Report** (`cadastre_gnaf.report`): writes `summary.csv` and `ATTRIBUTION.md`.
+4. **Report** (`cadastre_gnaf.report`): writes `summary.csv` and `ATTRIBUTION.md`, then the dataset
+   docs: a data dictionary built from the files' headers, sample values and the source layers' field
+   metadata (aliases and types), a Kaggle README and `dataset-metadata.json`.
+
+## Publishing to Kaggle
+
+The output folder is a ready-to-upload Kaggle dataset. With the
+[Kaggle CLI](https://github.com/Kaggle/kaggle-api) installed and `~/.kaggle/kaggle.json` in place:
+
+```bash
+uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
+kaggle datasets create -p cadastre_out              # first upload
+kaggle datasets version -p cadastre_out -m "Refresh" # later updates
+```
+
+`_progress/` is a folder, so the Kaggle CLI skips it by default. The README is used as the dataset
+description, and the per-column descriptions appear in Kaggle's data explorer.
 
 ## Project layout
 
@@ -119,7 +140,7 @@ src/cadastre_gnaf/
 ├── download/            page_size, fetch_in_order, download_arcgis_state, load_local_state, run_downloads
 ├── gnaf/                GnafSource, open_gnaf, open_table, read_table, read_address_*, download_file
 ├── linking/             score_keys, choose_keys, key_links, spatial_links, rewrite_parcels, finalise_state, run_gnaf
-└── report/              summary_rows, attribution_markdown, write_summary
+└── report/              summary_rows, attribution_markdown, write_summary, data dictionary and Kaggle docs
 tests/                   mirrors src/ (one test_<module>.py per module)
 ```
 

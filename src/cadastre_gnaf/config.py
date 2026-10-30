@@ -9,7 +9,7 @@ from cadastre_gnaf.constants import DEFAULT_STATES
 @dataclass(frozen=True)
 class Config:
     states: tuple[str, ...] = DEFAULT_STATES
-    step: str = "all"                                   # "all" | "download" | "gnaf"
+    step: str = "all"                                   # "all" | "download" | "gnaf" | "docs"
     out_dir: Path = Path("./cadastre_out")
     work_dir: Path = Path("./cadastre_work")
     compress: bool = False
@@ -23,6 +23,7 @@ class Config:
     spatial_join_states: tuple[str, ...] = ("WA",)
     local_sources: dict[str, str] = field(default_factory=dict)
     arcgis_tokens: dict[str, str] = field(default_factory=dict)   # e.g. {"WA": "<SLIP token>"}
+    kaggle_id: str = "your-username/australian-cadastre-gnaf"     # dataset-metadata.json "id"
 
     @property
     def csv_ext(self) -> str:

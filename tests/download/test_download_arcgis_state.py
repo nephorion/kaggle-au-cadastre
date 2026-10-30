@@ -31,6 +31,7 @@ def test_downloads_all_features_across_oid_gaps(small_pages, arcgis_layer, squar
     assert df.loc[0, "wkt"].startswith("POLYGON ((150 -35")
     prog = read_progress(small_pages, "ACT")
     assert prog["done"] and prog["rows"] == 8 and prog["expected"] == 8
+    assert prog["fields"][1] == {"name": "BLOCK", "alias": None, "type": "esriFieldTypeString"}
 
 
 def test_skips_state_already_done(small_pages, arcgis_layer, square_feature):

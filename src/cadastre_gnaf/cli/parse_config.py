@@ -29,4 +29,5 @@ def parse_config(argv=None):
         spatial_join_states=tuple(s.upper() for s in a.spatial_join),
         local_sources=local_sources,
         arcgis_tokens=tokens,
+        kaggle_id=a.kaggle_id,
     )
