@@ -17,7 +17,7 @@ def test_csv_twin_listed_after_parquet(dataset_out):
     files = dataset_files(dataset_out)
     assert [(f["file"], f["kind"], f.get("same_as")) for f in files[:2]] == [
         ("ACT_parcels.parquet", "parcels", None), ("ACT_parcels.csv", "parcels_csv", "ACT_parcels.parquet")]
-    assert files[1]["rows"] == 2 and "`|`-separated" in files[1]["description"]
+    assert files[1]["rows"] == 2 and "pipe-separated" in files[1]["description"]
 
 
 def test_empty_folder(config):

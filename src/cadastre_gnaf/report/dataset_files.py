@@ -23,7 +23,7 @@ def dataset_files(config):
         if csv.exists():
             files.append({"file": csv.name, "state": st, "kind": "parcels_csv", "rows": rows,
                           "size_mb": round(csv.stat().st_size / 1e6, 1), "same_as": path.name,
-                          "description": f"{text} (CSV; list columns are `|`-separated)"})
+                          "description": f"{text} (CSV; list columns are pipe-separated)"})
     summary = config.out_dir / "summary.csv"
     if summary.exists():
         files.append({"file": summary.name, "state": None, "kind": "summary", "rows": len(pd.read_csv(summary)),
