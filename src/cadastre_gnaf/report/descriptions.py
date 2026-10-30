@@ -12,7 +12,11 @@ PARCEL_COLUMNS = {
                                                  "(null if none). Explode and join to G-NAF `ADDRESS_DETAIL`."),
     "gnaf_link_methods": ("list<string>", "How those addresses were linked: `legal_parcel_id` (G-NAF's "
                                           "`LEGAL_PARCEL_ID` equals `gnaf_legal_parcel_id`) and/or `spatial_within` "
-                                          "(address point inside the parcel polygon). Null if none."),
+                                          "(the address point lies in this parcel, the smallest polygon containing "
+                                          "it). Null if none."),
+    "geometry_group_id": ("integer", "Parcels with an identical polygon (e.g. stacked strata lots) share this id: "
+                                     "the lowest `source_oid` in the group. Equals `source_oid` for most parcels."),
+    "geometry_group_size": ("integer", "Number of parcels sharing this exact polygon (1 = unique)."),
     "point_lon": ("number", "Longitude (EPSG:4326) of a point guaranteed to lie inside the parcel."),
     "point_lat": ("number", "Latitude (EPSG:4326) of a point guaranteed to lie inside the parcel."),
     "wkt": ("string", "Parcel boundary as WKT POLYGON or MULTIPOLYGON, EPSG:4326 (lon/lat)."),

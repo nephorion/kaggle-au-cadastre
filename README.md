@@ -24,7 +24,14 @@ G-NAF columns in each parcels file:
 - `gnaf_address_detail_pids`: list of the linked G-NAF `ADDRESS_DETAIL_PID`s (null if none)
 - `gnaf_link_methods`: how they were linked, `legal_parcel_id` and/or `spatial_within` (null if none)
 
-Columns are typed (integers, floats, booleans, dates, lists) from the source layers' field metadata.
+Geometry-group columns (for stacked parcels such as strata lots that share one polygon):
+
+- `geometry_group_id`: the lowest `source_oid` among parcels with an identical polygon
+- `geometry_group_size`: how many parcels share that polygon (1 = unique)
+
+Every state's files start with the same columns in the same order (`state`, `source_oid`, the G-NAF
+and geometry-group columns, `point_lon`, `point_lat`), then the state's candidate keys and source
+attributes, with `wkt` last. Columns are typed (integers, floats, booleans, dates, lists) from the source layers' field metadata.
 
 Working files live in the work folder (`--work`, default `./cadastre_work`): the staged CSVs in
 `staging/`, resume progress in `staging/_progress/` and the G-NAF zip. Downloads are **resumable**,
@@ -108,7 +115,9 @@ The process exits with code 1 if any state failed to download. Re-run the same c
 3. **G-NAF matching** (`cadastre_gnaf.linking`): measures how many parcels each candidate matches,
    picks the first matching candidate per parcel, links G-NAF addresses to parcels by that key and
    rewrites the staged CSV with the G-NAF columns, including each parcel's address ids. States listed
-   in `--spatial-join` also get a spatial join for addresses that the key did not link.
+   in `--spatial-join` also get a spatial join for addresses that the key did not link: each address
+   goes to the smallest polygon containing its geocode, and to one parcel per stack of identical
+   polygons (the stack's `geometry_group_id`).
 4. **Publish** (`cadastre_gnaf.publish`): converts each staged CSV to a zstd-compressed Parquet file,
    typing every column from the data dictionary (the source layers' field types, lists for the
    G-NAF address ids), and copies the CSV alongside it. Both are built in the work folder and moved

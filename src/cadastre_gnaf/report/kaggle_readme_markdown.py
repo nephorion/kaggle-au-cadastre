@@ -1,5 +1,8 @@
 import datetime as dt
 
+from cadastre_gnaf.constants import LEADING_COLUMNS
+from cadastre_gnaf.report.descriptions import PARCEL_COLUMNS
+
 TITLE = "Australian Land Parcels (Cadastre) + G-NAF"
 SUBTITLE = "State cadastre parcels with geometry, keyed to G-NAF addresses"
 
@@ -57,7 +60,15 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
                 "WA's public layer has geometry only, so WA addresses are linked spatially (address point inside "
                 "the parcel polygon) instead of by key.", ""]
 
-    out += ["## Using the data on Kaggle", "",
+    out += ["## Columns", "",
+            "Every parcels file, for every state and in both formats, starts with the same columns in the same "
+            "order:", "",
+            "| Column | Type | Description |", "|---|---|---|"]
+    out += [f"| `{c}` | {PARCEL_COLUMNS[c][0]} | {PARCEL_COLUMNS[c][1]} |" for c in LEADING_COLUMNS]
+    out += ["", "They are followed by the state's candidate keys (`key_*`) and the attributes published by the "
+            "state, which differ between states, and finally `wkt`. Every column of every file is described in "
+            "`data_dictionary.md`.", "",
+            "## Using the data on Kaggle", "",
             "Add this dataset to a notebook (**Add Input**), then:", "",
             "### Load parcels without geometry (fast)", "",
             "Parquet reads only the columns you ask for. Leave out `wkt` unless you need the polygons:", "",
@@ -113,6 +124,25 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             f'csv = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=cols, dtype={{"gnaf_legal_parcel_id": str}})',
             'csv["gnaf_address_detail_pids"] = csv["gnaf_address_detail_pids"].str.split("|")',
             "```", "",
+            "### Stacked parcels (identical polygons)", "",
+            "Some parcels share exactly the same polygon, typically strata lots drawn with the building's "
+            "footprint (common in WA). They have the same `geometry_group_id`; `geometry_group_size` says how "
+            "many share it. Addresses linked spatially go to one parcel per stack, the one whose `source_oid` "
+            "equals `geometry_group_id`.", "",
+            "```python",
+            'p = pd.read_parquet(f"{DATA}/WA_parcels.parquet",',
+            '                    columns=["source_oid", "geometry_group_id", "geometry_group_size",',
+            '                             "gnaf_address_count"])',
+            "",
+            "# one row per distinct polygon (for maps, areas, counting land parcels)",
+            'footprints = p[p["source_oid"] == p["geometry_group_id"]]',
+            "",
+            "# every lot in the same stack as a given parcel",
+            'stack = p[p["geometry_group_id"] == p.loc[0, "geometry_group_id"]]',
+            "",
+            "# how much stacking there is",
+            'p["geometry_group_size"].clip(upper=10).value_counts().sort_index()',
+            "```", "",
             "### Large states", "",
             "NSW and VIC have several million rows each. Select columns and filter rows while reading:", "",
             "```python",
@@ -125,7 +155,9 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "converted to WKT and given an interior point. For each state several candidate keys in G-NAF's "
             "`LEGAL_PARCEL_ID` format were built from the parcel attributes; each parcel uses the first candidate "
             "that exists in G-NAF (match rates per candidate are in `summary.csv`). Addresses were then linked to "
-            "parcels by that key, with a point-in-polygon join for WA.", "",
+            "parcels by that key. WA's public layer has no lot/plan attributes, so WA addresses were linked with a "
+            "point-in-polygon join instead: each address goes to the smallest polygon containing its G-NAF "
+            "geocode, and to one parcel per stack of identical polygons.", "",
             "## Caveats", "",
             "- SA and NT cadastres are not open data and are not included.",
             "- Cadastral polygons are graphical representations only, not legal boundaries.",

@@ -60,3 +60,17 @@ def test_saves_summary_in_progress(no_spatial, gnaf, act_parcels):
     summ = finalise_state(no_spatial, gnaf, "ACT", SOURCE)
     prog = read_progress(no_spatial, "ACT")
     assert prog["gnaf"] == summ and prog["done"] and prog["rows"] == 3
+
+
+def test_stacked_polygons_share_a_group_and_one_gets_the_addresses(config, gnaf, act_parcels):
+    pytest.importorskip("geopandas")
+    df = pd.read_csv(act_parcels, dtype=str)
+    stacked = df.iloc[[1]].assign(source_oid="3")              # OID 3: same polygon as OID 2
+    pd.concat([df, stacked]).to_csv(act_parcels, index=False)
+    finalise_state(replace(config, spatial_join_states=("ACT",)), gnaf, "ACT", SOURCE)
+    parcels = pd.read_csv(act_parcels, dtype=str, keep_default_na=False).set_index("source_oid")
+    assert parcels.loc[["2", "3"], "geometry_group_id"].tolist() == ["2", "2"]
+    assert parcels.loc[["2", "3"], "geometry_group_size"].tolist() == ["2", "2"]
+    assert parcels.loc["2", "gnaf_address_detail_pids"] == "GAACT3"
+    assert parcels.loc["3", "gnaf_address_detail_pids"] == ""
+    assert parcels.loc["1", "geometry_group_size"] == "1"

@@ -63,3 +63,10 @@ def test_gnaf_join_example():
 def test_csv_example():
     md = readme()
     assert 'pd.read_csv(f"{DATA}/ACT_parcels.csv"' in md and '.str.split("|")' in md
+
+
+def test_shared_columns_and_stacked_parcels():
+    md = readme()
+    assert "## Columns" in md and "| `geometry_group_id` | integer |" in md
+    assert md.index("| `state` |") < md.index("| `gnaf_address_detail_pids` |") < md.index("| `point_lat` |")
+    assert 'footprints = p[p["source_oid"] == p["geometry_group_id"]]' in md
