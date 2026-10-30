@@ -21,3 +21,10 @@ def test_one_row_per_state(config):
                    "key_match_by_candidate": json.dumps({"key_a": "8/9"}), "licence": "CC BY"}
     assert loc["source"] == "/data/loc.shp" and loc["parcels_written"] is None
     assert no["source"] == "not available (licensed)"
+
+
+def test_uses_saved_gnaf_figures_for_states_not_in_this_run(config):
+    write_progress(config, "WEB", {"expected": 10, "gnaf": {"state": "WEB", "parcels": 7}})
+    web, loc, no = summary_rows(replace(config, states=("LOC",)), SOURCES, [])
+    assert web["parcels_written"] == 7 and web["features_expected"] == 10
+    assert loc["parcels_written"] is None

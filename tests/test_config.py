@@ -18,14 +18,16 @@ def test_csv_extension_and_compression():
     assert (Config(compress=True).csv_ext, Config(compress=True).compression) == (".csv.gz", "gzip")
 
 
-def test_progress_dir_under_out_dir():
-    assert Config(out_dir=Path("x")).progress_dir == Path("x") / "_progress"
+def test_staging_and_progress_under_work_dir():
+    c = Config(out_dir=Path("o"), work_dir=Path("w"))
+    assert c.staging_dir == Path("w") / "staging"
+    assert c.progress_dir == Path("w") / "staging" / "_progress"
 
 
-@pytest.mark.parametrize(("step", "download", "gnaf", "addresses"), [
+@pytest.mark.parametrize(("step", "download", "gnaf", "publish"), [
     ("all", True, True, True), ("download", True, False, False), ("gnaf", False, True, True),
-    ("addresses", False, False, True), ("docs", False, False, False),
+    ("publish", False, False, True), ("docs", False, False, False),
 ])
-def test_step_flags(step, download, gnaf, addresses):
+def test_step_flags(step, download, gnaf, publish):
     c = Config(step=step)
-    assert (c.do_download, c.do_gnaf, c.do_addresses) == (download, gnaf, addresses)
+    assert (c.do_download, c.do_gnaf, c.do_publish) == (download, gnaf, publish)

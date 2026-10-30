@@ -4,11 +4,15 @@ from cadastre_gnaf.storage import read_progress
 
 
 def summary_rows(config, sources, summaries):
-    """One row per configured state: source, counts, G-NAF match rates and licence."""
+    """One row per state in `sources`: source, counts, G-NAF match rates and licence.
+
+    G-NAF figures come from `summaries` (this run) or else from the state's saved progress (earlier runs),
+    so a run limited to some states keeps the others' figures.
+    """
     rows = []
-    for st in config.states:
+    for st in sources:
         p = read_progress(config, st)
-        s = next((x for x in summaries if x["state"] == st), {})
+        s = next((x for x in summaries if x["state"] == st), None) or p.get("gnaf", {})
         rows.append({
             "state": st,
             "source": sources[st].url or config.local_sources.get(st, "not available (licensed)"),

@@ -1,24 +1,32 @@
-from cadastre_gnaf.report.count_rows import count_rows
-from cadastre_gnaf.storage import links_path, parcel_addresses_path, parcels_path
+import pandas as pd
+import pyarrow.parquet as pq
+
+from cadastre_gnaf.constants import DEFAULT_STATES
+from cadastre_gnaf.storage import parquet_path, published_csv_path
 
 
 def dataset_files(config):
-    """The data files in the output folder: name, state, kind, rows, size in MB and a description."""
+    """The data files in the output folder: name, state, kind, rows, size in MB and a description.
+
+    Covers every state with a published file, not just the states of this run. A state's CSV has the
+    same columns as its Parquet file; its `same_as` names that file.
+    """
     files = []
-    for st in config.states:
-        for kind, path, text in (
-                ("parcels", parcels_path(config, st), f"{st} land parcels: keys, G-NAF columns, "
-                                                      "source attributes, interior point and WKT geometry"),
-                ("links", links_path(config, st), f"{st} G-NAF address -> parcel links"),
-                ("parcel_addresses", parcel_addresses_path(config, st),
-                 f"{st} parcels with their G-NAF addresses inline: one row per parcel and address, "
-                 "empty address columns where none is linked")):
-            if path.exists():
-                files.append({"file": path.name, "state": st, "kind": kind, "rows": count_rows(path),
-                              "size_mb": round(path.stat().st_size / 1e6, 1), "description": text})
+    for st in DEFAULT_STATES:
+        path, csv = parquet_path(config, st), published_csv_path(config, st)
+        if not path.exists():
+            continue
+        rows = pq.ParquetFile(path).metadata.num_rows
+        text = f"{st} land parcels: source attributes, G-NAF key and address ids, interior point and WKT geometry"
+        files.append({"file": path.name, "state": st, "kind": "parcels", "rows": rows,
+                      "size_mb": round(path.stat().st_size / 1e6, 1), "description": text})
+        if csv.exists():
+            files.append({"file": csv.name, "state": st, "kind": "parcels_csv", "rows": rows,
+                          "size_mb": round(csv.stat().st_size / 1e6, 1), "same_as": path.name,
+                          "description": f"{text} (CSV; list columns are `|`-separated)"})
     summary = config.out_dir / "summary.csv"
     if summary.exists():
-        files.append({"file": summary.name, "state": None, "kind": "summary", "rows": count_rows(summary),
+        files.append({"file": summary.name, "state": None, "kind": "summary", "rows": len(pd.read_csv(summary)),
                       "size_mb": round(summary.stat().st_size / 1e6, 3),
                       "description": "Per-state counts, G-NAF match rates and licences"})
     return files

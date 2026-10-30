@@ -2,7 +2,7 @@ from cadastre_gnaf.report.descriptions import ESRI_TYPES, KEY_COLUMNS, PARCEL_CO
 
 
 def describe_column(column, state, fields):
-    """(type, description) of a parcels-file column; type is None when it has to be inferred from the data."""
+    """(type, description) of a parcels-file column; type is None when the source does not say."""
     if column in PARCEL_COLUMNS:
         return PARCEL_COLUMNS[column]
     if column.startswith("key_"):

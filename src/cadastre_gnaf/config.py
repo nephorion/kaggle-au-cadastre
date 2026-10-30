@@ -9,7 +9,7 @@ from cadastre_gnaf.constants import DEFAULT_STATES
 @dataclass(frozen=True)
 class Config:
     states: tuple[str, ...] = DEFAULT_STATES
-    step: str = "all"                                   # "all" | "download" | "gnaf" | "addresses" | "docs"
+    step: str = "all"                                   # "all" | "download" | "gnaf" | "publish" | "docs"
     out_dir: Path = Path("./cadastre_out")
     work_dir: Path = Path("./cadastre_work")
     compress: bool = False
@@ -34,8 +34,13 @@ class Config:
         return "gzip" if self.compress else None
 
     @property
+    def staging_dir(self) -> Path:
+        """Working CSVs (downloaded, then G-NAF-matched) that the Parquet files are published from."""
+        return self.work_dir / "staging"
+
+    @property
     def progress_dir(self) -> Path:
-        return self.out_dir / "_progress"
+        return self.staging_dir / "_progress"
 
     @property
     def do_download(self) -> bool:
@@ -46,5 +51,5 @@ class Config:
         return self.step in ("all", "gnaf")
 
     @property
-    def do_addresses(self) -> bool:
-        return self.step in ("all", "gnaf", "addresses")
+    def do_publish(self) -> bool:
+        return self.step in ("all", "gnaf", "publish")

@@ -9,11 +9,11 @@ from cadastre_gnaf.linking.read_parcel_keys import read_parcel_keys
 from cadastre_gnaf.linking.rewrite_parcels import rewrite_parcels
 from cadastre_gnaf.linking.score_keys import score_keys
 from cadastre_gnaf.linking.spatial_fallback_links import spatial_fallback_links
-from cadastre_gnaf.storage import links_path, parcels_path
+from cadastre_gnaf.storage import parcels_path, read_progress, write_progress
 
 
 def finalise_state(config, gnaf, state, source):
-    """Pick the G-NAF key, write the address links and add G-NAF columns to the parcels CSV.
+    """Pick the G-NAF key, link addresses and add the G-NAF columns to the staged parcels CSV.
 
     `gnaf` may be None, in which case only the best available key is filled in.
     Returns a summary dict, or None if the state has no parcels CSV.
@@ -38,16 +38,15 @@ def finalise_state(config, gnaf, state, source):
                                            links["address_detail_pid"], label=state)
             links = pd.concat([links, extra], ignore_index=True)
         links["source_oid"] = links["source_oid"].astype(str)
-        links.to_csv(links_path(config, state), index=False, compression=config.compression)
-        counts = links.groupby("source_oid")["address_detail_pid"].nunique()
         summ["gnaf_addresses"] = len(g)
         summ["addresses_linked"] = int(links["address_detail_pid"].nunique())
         summ["address_link_rate"] = round(summ["addresses_linked"] / max(1, len(g)), 4)
         summ["parcels_with_gnaf_key_match"] = int(matched.sum())
     else:
         chosen, matched = fallback_keys(kd)
-        counts = pd.Series(dtype=int)
+        links = pd.DataFrame(columns=["address_detail_pid", "source_oid", "method"], dtype=str)
 
-    rewrite_parcels(path, len(knames), chosen, matched, counts, config.compression)
+    rewrite_parcels(path, len(knames), chosen, matched, links, config.compression)
+    write_progress(config, state, {**read_progress(config, state), "gnaf": summ})   # for later summaries
     print(f"[{state}] finalised {path.name}: {summ}")
     return summ

@@ -1,7 +1,7 @@
 import datetime as dt
 
 TITLE = "Australian Land Parcels (Cadastre) + G-NAF"
-SUBTITLE = "State cadastre parcels with geometry, linked to G-NAF addresses"
+SUBTITLE = "State cadastre parcels with geometry, keyed to G-NAF addresses"
 
 
 def _num(v):
@@ -27,12 +27,14 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
 
     out = [f"# {TITLE}", "", f"*{SUBTITLE}.*", "",
            f"{total:,} land parcels from the open state cadastres of {', '.join(states) or 'Australia'}, "
-           "one CSV per state, each parcel keyed to **G-NAF** (Geoscape's Geocoded National Address File) "
-           "through its `LEGAL_PARCEL_ID`, plus an address-to-parcel link table per state and a parcels file "
-           "with the addresses already joined in.", "",
+           "one Parquet and one CSV file per state. Every parcel carries the ids of its **G-NAF** addresses "
+           "(Geoscape's Geocoded National Address File), so it joins straight to any copy of G-NAF with no "
+           "link table.", "",
            "Each parcel row has:", "",
            "- the parcel's attributes as published by the state",
-           "- `gnaf_legal_parcel_id`, `gnaf_key_matched` and `gnaf_address_count`",
+           "- `gnaf_legal_parcel_id`: the parcel key in G-NAF `LEGAL_PARCEL_ID` format, and `gnaf_key_matched`",
+           "- `gnaf_address_detail_pids`: list of G-NAF `ADDRESS_DETAIL_PID`s on the parcel (null if none), "
+           "with `gnaf_address_count` and `gnaf_link_methods`",
            "- `point_lon` / `point_lat`: a point guaranteed to lie inside the parcel",
            "- `wkt`: the boundary polygon (EPSG:4326)", "",
            "## Files", "",
@@ -58,45 +60,41 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
     out += ["## Using the data on Kaggle", "",
             "Add this dataset to a notebook (**Add Input**), then:", "",
             "### Load parcels without geometry (fast)", "",
-            "The `wkt` column holds most of each file's size. Skip it unless you need the polygons:", "",
+            "Parquet reads only the columns you ask for. Leave out `wkt` unless you need the polygons:", "",
             "```python",
             "import pandas as pd",
             "",
             f'DATA = "/kaggle/input/{slug}"',
             "",
-            'cols = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_key_matched",',
-            '        "gnaf_address_count", "point_lon", "point_lat"]',
-            f'parcels = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=cols)',
+            'cols = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_key_matched", "gnaf_address_count",',
+            '        "gnaf_address_detail_pids", "point_lon", "point_lat"]',
+            f'parcels = pd.read_parquet(f"{{DATA}}/{ex}_parcels.parquet", columns=cols)',
             "parcels.head()",
             "```", "",
-            "### Parcels with their addresses (no join needed)", "",
-            "`<STATE>_parcels_with_addresses.csv` has one row per parcel and address: a parcel with three "
-            "addresses appears three times, and a parcel without an address appears once with empty "
-            "`address_*` columns.", "",
+            "### Join G-NAF addresses", "",
+            "`gnaf_address_detail_pids` is a list per parcel. Explode it to one row per address and join "
+            "`ADDRESS_DETAIL` from G-NAF (attach a G-NAF dataset, or use the release from data.gov.au):", "",
             "```python",
-            'pa = pd.read_csv(f"{DATA}/' + ex + '_parcels_with_addresses.csv",',
-            '                 usecols=lambda c: c != "wkt", dtype={"address_postcode": str})',
-            'pa[["source_oid", "gnaf_legal_parcel_id", "address_full", "address_lon", "address_lat"]].head()',
+            'GNAF = "/kaggle/input/<your-gnaf-dataset>"     # folder holding the G-NAF PSV files',
+            f'detail = pd.read_csv(f"{{GNAF}}/{ex}_ADDRESS_DETAIL_psv.psv", sep="|", dtype=str)',
             "",
-            "unaddressed = pa[pa[\"address_detail_pid\"].isna()]",
+            "addresses = (parcels.explode(\"gnaf_address_detail_pids\")",
+            "                    .merge(detail, how=\"left\", left_on=\"gnaf_address_detail_pids\",",
+            "                           right_on=\"ADDRESS_DETAIL_PID\"))",
             "```", "",
-            "### Addresses per parcel (from the link table)", "",
+            "Parcels without an address keep one row with null G-NAF columns. Key-matched parcels can also be "
+            "joined on `gnaf_legal_parcel_id` = `LEGAL_PARCEL_ID` (trim spaces from G-NAF's values first).", "",
+            "### Addresses per parcel", "",
             "```python",
-            f'links = pd.read_csv(f"{{DATA}}/{ex}_gnaf_address_parcel_links.csv")',
-            'print(links["method"].value_counts())',
-            "",
-            'per_parcel = links.groupby("source_oid")["address_detail_pid"].nunique()',
-            'parcels["addresses"] = parcels["source_oid"].map(per_parcel).fillna(0).astype(int)',
-            'parcels["addresses"].clip(upper=10).value_counts().sort_index().plot.bar(',
+            'parcels["gnaf_address_count"].clip(upper=10).value_counts().sort_index().plot.bar(',
             '    title="Addresses per parcel (10 = 10 or more)")',
             "```", "",
-            "`address_detail_pid` joins to `ADDRESS_DETAIL_PID` in G-NAF (attach a G-NAF dataset or download it "
-            "from data.gov.au) to get street addresses and geocodes.", "",
             "### Polygons with GeoPandas", "",
             "```python",
             "import geopandas as gpd",
             "",
-            f'df = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=["source_oid", "gnaf_legal_parcel_id", "wkt"])',
+            f'df = pd.read_parquet(f"{{DATA}}/{ex}_parcels.parquet",',
+            '                     columns=["source_oid", "gnaf_legal_parcel_id", "wkt"])',
             'gdf = gpd.GeoDataFrame(df.drop(columns="wkt"), geometry=gpd.GeoSeries.from_wkt(df["wkt"]), crs=4326)',
             "",
             'gdf["area_m2"] = gdf.to_crs(3577).area      # Australian Albers equal-area',
@@ -109,12 +107,18 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             'pt = Point(parcels.loc[0, "point_lon"], parcels.loc[0, "point_lat"])   # any lon/lat',
             "gdf[gdf.contains(pt)]",
             "```", "",
-            "### Large states in chunks", "",
-            "NSW and VIC have several million rows each. Read them in chunks if memory is tight:", "",
+            "### CSV instead of Parquet", "",
+            "Every `.parquet` file has a `.csv` twin with the same columns. Lists are `|`-separated text there:", "",
             "```python",
-            "matched = 0",
-            'for chunk in pd.read_csv(f"{DATA}/NSW_parcels.csv", usecols=["gnaf_key_matched"], chunksize=500_000):',
-            '    matched += chunk["gnaf_key_matched"].sum()',
+            f'csv = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=cols, dtype={{"gnaf_legal_parcel_id": str}})',
+            'csv["gnaf_address_detail_pids"] = csv["gnaf_address_detail_pids"].str.split("|")',
+            "```", "",
+            "### Large states", "",
+            "NSW and VIC have several million rows each. Select columns and filter rows while reading:", "",
+            "```python",
+            'nsw = pd.read_parquet(f"{DATA}/NSW_parcels.parquet",',
+            '                      columns=["source_oid", "gnaf_legal_parcel_id", "gnaf_address_detail_pids"],',
+            '                      filters=[("gnaf_address_count", ">", 0)])',
             "```", "",
             "## How it was built", "",
             "Parcels were paged out of each state's public ArcGIS REST service by ObjectID. Esri polygons were "

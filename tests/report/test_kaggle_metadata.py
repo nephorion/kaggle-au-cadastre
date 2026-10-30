@@ -19,3 +19,10 @@ def test_metadata():
 def test_unknown_type_is_string():
     m = kaggle_metadata("me/x", [{"file": "B.csv", "description": "B"}], ROWS, "")
     assert m["resources"][0]["schema"]["fields"][0]["type"] == "string"
+
+
+def test_csv_twin_reuses_the_parquet_schema():
+    files = FILES + [{"file": "T.csv", "description": "T (CSV)", "same_as": "T.parquet"}]
+    rows = ROWS + [{"file": "T.parquet", "column": "ids", "type": "list<string>", "description": "ids"}]
+    m = kaggle_metadata("me/x", files, rows, "")
+    assert m["resources"][1]["schema"]["fields"] == [{"name": "ids", "description": "ids", "type": "string"}]

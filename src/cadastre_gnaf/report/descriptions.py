@@ -3,12 +3,16 @@
 # column -> (type, description)
 PARCEL_COLUMNS = {
     "state": ("string", "State or territory code (NSW, VIC, QLD, TAS, ACT, WA, SA, NT)."),
-    "source_oid": ("integer", "ObjectID of the parcel in the source service. Unique within the file; joins to "
-                              "`source_oid` in the matching address links file."),
+    "source_oid": ("integer", "ObjectID of the parcel in the source service. Unique within the file."),
     "gnaf_legal_parcel_id": ("string", "Parcel key in G-NAF `LEGAL_PARCEL_ID` format: the first candidate key "
                                        "that exists in G-NAF, otherwise the best available candidate."),
     "gnaf_key_matched": ("boolean", "True if `gnaf_legal_parcel_id` exists in G-NAF."),
     "gnaf_address_count": ("integer", "Number of distinct G-NAF addresses linked to the parcel."),
+    "gnaf_address_detail_pids": ("list<string>", "G-NAF `ADDRESS_DETAIL_PID`s of the addresses on the parcel "
+                                                 "(null if none). Explode and join to G-NAF `ADDRESS_DETAIL`."),
+    "gnaf_link_methods": ("list<string>", "How those addresses were linked: `legal_parcel_id` (G-NAF's "
+                                          "`LEGAL_PARCEL_ID` equals `gnaf_legal_parcel_id`) and/or `spatial_within` "
+                                          "(address point inside the parcel polygon). Null if none."),
     "point_lon": ("number", "Longitude (EPSG:4326) of a point guaranteed to lie inside the parcel."),
     "point_lat": ("number", "Latitude (EPSG:4326) of a point guaranteed to lie inside the parcel."),
     "wkt": ("string", "Parcel boundary as WKT POLYGON or MULTIPOLYGON, EPSG:4326 (lon/lat)."),
@@ -34,35 +38,11 @@ KEY_COLUMNS = {
     "key_loc_lto_par": "Candidate key location/LTO/parcel.",
 }
 
-LINK_COLUMNS = {
-    "address_detail_pid": ("string", "G-NAF address identifier (`ADDRESS_DETAIL.ADDRESS_DETAIL_PID`)."),
-    "legal_parcel_id": ("string", "G-NAF `LEGAL_PARCEL_ID` recorded for the address."),
-    "source_oid": ("integer", "Parcel `source_oid` in the state's parcels file."),
-    "method": ("string", "`legal_parcel_id` (key match) or `spatial_within` (address point inside the parcel "
-                                "polygon, for addresses the key did not link)."),
-}
-
-ADDRESS_COLUMNS = {
-    "address_detail_pid": ("string", "G-NAF address identifier (`ADDRESS_DETAIL_PID`); empty if the parcel has "
-                                     "no linked address."),
-    "address_link_method": ("string", "How the address was linked: `legal_parcel_id` or `spatial_within`."),
-    "address_full": ("string", "One-line address, e.g. `UNIT 2, 134 ARANDA STREET, BELCONNEN ACT 2614`."),
-    "address_building_name": ("string", "Building or complex name."),
-    "address_flat": ("string", "Flat type and number, e.g. `UNIT 2`."),
-    "address_level": ("string", "Level type code and number, e.g. `L 3`."),
-    "address_number": ("string", "Street number or range (e.g. `12A`, `10-14`), else `LOT <n>`."),
-    "address_street": ("string", "Street name, type and suffix, e.g. `ARANDA STREET`."),
-    "address_locality": ("string", "Suburb or locality name."),
-    "address_postcode": ("string", "Postcode."),
-    "address_lon": ("number", "Longitude of the address's G-NAF default geocode (EPSG:4326, GDA2020)."),
-    "address_lat": ("number", "Latitude of the address's G-NAF default geocode (EPSG:4326, GDA2020)."),
-}
-
 SUMMARY_COLUMNS = {
     "state": ("string", "State or territory code."),
     "source": ("string", "Source service URL (or local file)."),
     "features_expected": ("integer", "Feature count reported by the source service."),
-    "parcels_written": ("integer", "Rows in the state's parcels file."),
+    "parcels_written": ("integer", "Parcels in the state's parcels file."),
     "parcels_matching_gnaf_key": ("integer", "Parcels whose `gnaf_legal_parcel_id` exists in G-NAF."),
     "gnaf_addresses": ("integer", "G-NAF addresses in the state that carry a legal parcel id."),
     "address_link_rate": ("number", "Share of those G-NAF addresses linked to a parcel."),
