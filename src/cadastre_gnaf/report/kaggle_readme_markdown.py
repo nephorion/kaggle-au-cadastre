@@ -17,14 +17,17 @@ def _pct(n, d):
     return "" if not n or not d else f"{n / d:.1%}"
 
 
-def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None):
+def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None,
+                           gnaf_kaggle_id="your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat"):
     """README.md for the Kaggle dataset: contents, coverage, usage examples and licences.
 
     `files` comes from dataset_files, `summary` is the rows of summary.csv (dicts) and `attribution`
-    the ATTRIBUTION.md text, whose "- " source lines are copied in.
+    the ATTRIBUTION.md text, whose "- " source lines are copied in. `gnaf_kaggle_id` is the flat G-NAF
+    dataset (one CSV row per address, under `gnaf_csv/`) used in the join example.
     """
     built = built or dt.datetime.now()
-    slug = kaggle_id.split("/")[-1]
+    slug, gnaf_slug = kaggle_id.split("/")[-1], gnaf_kaggle_id.split("/")[-1]
+    gnaf_url = f"https://www.kaggle.com/datasets/{gnaf_kaggle_id}"
     parcels = [f for f in files if f["kind"] == "parcels"]
     states = [f["state"] for f in parcels]
     ex = "ACT" if "ACT" in states else min(parcels, key=lambda f: f["size_mb"])["state"] if parcels else "ACT"
@@ -116,18 +119,29 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "table above before comparing states (for example, only QLD, TAS and ACT have `tenure` for every "
             "parcel).", "",
             "### Join G-NAF addresses", "",
-            "`gnaf_address_detail_pids` is a list per parcel. Explode it to one row per address and join "
-            "`ADDRESS_DETAIL` from G-NAF (attach a G-NAF dataset, or use the release from data.gov.au):", "",
+            f"This dataset was matched against the same G-NAF release as [{gnaf_kaggle_id}]({gnaf_url}), a flat "
+            "copy of G-NAF with one row per address (full address, locality, postcode, geocode and more). Add it "
+            "to the notebook as a second input. `gnaf_address_detail_pids` is a list per parcel: explode it to "
+            "one row per address and merge:", "",
             "```python",
-            'GNAF = "/kaggle/input/<your-gnaf-dataset>"     # folder holding the G-NAF PSV files',
-            f'detail = pd.read_csv(f"{{GNAF}}/{ex}_ADDRESS_DETAIL_psv.psv", sep="|", dtype=str)',
+            "import glob",
             "",
-            "addresses = (parcels.explode(\"gnaf_address_detail_pids\")",
-            "                    .merge(detail, how=\"left\", left_on=\"gnaf_address_detail_pids\",",
-            "                           right_on=\"ADDRESS_DETAIL_PID\"))",
+            f'GNAF = "/kaggle/input/{gnaf_slug}/gnaf_csv"      # files gnaf_<STATE>_<postcode area>.csv',
+            'gnaf_cols = ["address_detail_pid", "full_address", "locality_name", "postcode_effective",',
+            '             "longitude", "latitude"]',
+            "gnaf = pd.concat([pd.read_csv(f, usecols=gnaf_cols, dtype=str)",
+            f'                  for f in glob.glob(f"{{GNAF}}/gnaf_{ex}_*.csv")], ignore_index=True)',
+            "",
+            'parcel_addresses = (parcels.explode("gnaf_address_detail_pids")',
+            '                           .merge(gnaf, how="left", left_on="gnaf_address_detail_pids",',
+            '                                  right_on="address_detail_pid"))',
+            'parcel_addresses[["source_oid", "gnaf_legal_parcel_id", "full_address", "locality_name"]].head()',
             "```", "",
-            "Parcels without an address keep one row with null G-NAF columns. Key-matched parcels can also be "
-            "joined on `gnaf_legal_parcel_id` = `LEGAL_PARCEL_ID` (trim spaces from G-NAF's values first).", "",
+            "Parcels without an address keep one row with null address columns. Key-matched parcels can also be "
+            "joined on `gnaf_legal_parcel_id` = G-NAF's `legal_parcel_id`. The raw G-NAF tables (PSV, as "
+            "released by Geoscape) are in "
+            "[your-kaggle-username/gnaf-aug-2026-all-states-gda2020]"
+            "(https://www.kaggle.com/datasets/your-kaggle-username/gnaf-aug-2026-all-states-gda2020).", "",
             "### Addresses per parcel", "",
             "```python",
             'parcels["gnaf_address_count"].clip(upper=10).value_counts().sort_index().plot.bar(',

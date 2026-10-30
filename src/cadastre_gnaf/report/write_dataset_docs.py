@@ -25,7 +25,8 @@ def write_dataset_docs(config, session=None, sources=SOURCES):
         s = pd.read_csv(summary_csv)
         summary = s.astype(object).where(s.notna(), None).to_dict("records")
     attribution = attribution_md.read_text(encoding="utf-8") if attribution_md.exists() else ""
-    readme = kaggle_readme_markdown(files, summary, config.kaggle_id, attribution)
+    readme = kaggle_readme_markdown(files, summary, config.kaggle_id, attribution,
+                                    gnaf_kaggle_id=config.gnaf_kaggle_id)
     (out / "README.md").write_text(readme, encoding="utf-8")
     (out / "dataset-metadata.json").write_text(
         json.dumps(kaggle_metadata(config.kaggle_id, files, rows, readme), indent=2), encoding="utf-8")

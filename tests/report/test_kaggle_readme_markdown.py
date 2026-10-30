@@ -54,10 +54,16 @@ def test_no_summary_or_attribution():
     assert "## Coverage" not in md and "## Licences" not in md
 
 
-def test_gnaf_join_example():
+def test_gnaf_join_example_uses_the_flat_gnaf_dataset():
     md = readme()
-    assert 'f"{GNAF}/ACT_ADDRESS_DETAIL_psv.psv"' in md
-    assert 'explode("gnaf_address_detail_pids")' in md
+    assert 'GNAF = "/kaggle/input/gnaf-aug-2026-all-states-gda2020-flat/gnaf_csv"' in md
+    assert 'glob.glob(f"{GNAF}/gnaf_ACT_*.csv")' in md and 'explode("gnaf_address_detail_pids")' in md
+    assert "(https://www.kaggle.com/datasets/your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat)" in md
+
+
+def test_gnaf_dataset_is_configurable():
+    md = kaggle_readme_markdown(FILES, [], "me/x", gnaf_kaggle_id="someone/my-gnaf")
+    assert '"/kaggle/input/my-gnaf/gnaf_csv"' in md and "[someone/my-gnaf](" in md
 
 
 def test_csv_example():

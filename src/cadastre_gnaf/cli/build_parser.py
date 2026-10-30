@@ -41,6 +41,8 @@ def build_parser():
                     help="licensed/purchased data to use instead of a web service, e.g. SA=/data/sa.shp")
     ap.add_argument("--token", nargs="*", default=[], metavar="STATE=TOKEN",
                     help="ArcGIS token for a subscription service, e.g. WA=<SLIP token>")
-    ap.add_argument("--kaggle-id", default="your-username/australian-cadastre-gnaf",
+    ap.add_argument("--kaggle-id", default="your-kaggle-username/australian-cadastre-gnaf",
                     help="Kaggle dataset id (owner/slug) written to dataset-metadata.json and the README")
+    ap.add_argument("--gnaf-kaggle-id", default="your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat",
+                    help="Kaggle dataset with flat G-NAF (one CSV row per address) used in the README's join example")
     return ap

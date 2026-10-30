@@ -23,7 +23,8 @@ class Config:
     spatial_join_states: tuple[str, ...] = ("WA",)
     local_sources: dict[str, str] = field(default_factory=dict)
     arcgis_tokens: dict[str, str] = field(default_factory=dict)   # e.g. {"WA": "<SLIP token>"}
-    kaggle_id: str = "your-username/australian-cadastre-gnaf"     # dataset-metadata.json "id"
+    kaggle_id: str = "your-kaggle-username/australian-cadastre-gnaf"   # dataset-metadata.json "id"
+    gnaf_kaggle_id: str = "your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat"   # G-NAF used in the examples
 
     @property
     def csv_ext(self) -> str:

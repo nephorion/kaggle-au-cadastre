@@ -30,4 +30,5 @@ def parse_config(argv=None):
         local_sources=local_sources,
         arcgis_tokens=tokens,
         kaggle_id=a.kaggle_id,
+        gnaf_kaggle_id=a.gnaf_kaggle_id,
     )

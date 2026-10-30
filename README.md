@@ -175,7 +175,8 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | `--spatial-join` | `WA` | States that also get a point-in-polygon address join |
 | `--local STATE=PATH` | none | Licensed file (any format geopandas reads) instead of a web service |
 | `--token STATE=TOKEN` | none | ArcGIS token for a subscription service (e.g. a SLIP layer) |
-| `--kaggle-id` | `your-username/australian-cadastre-gnaf` | Kaggle dataset id written to `dataset-metadata.json` and used in the README's paths |
+| `--kaggle-id` | `your-kaggle-username/australian-cadastre-gnaf` | Kaggle dataset id written to `dataset-metadata.json` and used in the README's paths |
+| `--gnaf-kaggle-id` | `your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat` | Flat G-NAF Kaggle dataset (one CSV row per address) used in the dataset README's join example |
 
 The process exits with code 1 if any state failed to download. Re-run the same command to resume.
 

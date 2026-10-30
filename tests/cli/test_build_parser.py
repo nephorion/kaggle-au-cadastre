@@ -8,7 +8,8 @@ def test_defaults():
     assert a.workers == 4 and a.decimals == 6 and a.page_size is None
     assert a.spatial_join == ["WA"] and a.local == [] and a.token == []
     assert not (a.compress or a.no_wkt or a.force)
-    assert a.kaggle_id == "your-username/australian-cadastre-gnaf"
+    assert a.kaggle_id == "your-kaggle-username/australian-cadastre-gnaf"
+    assert a.gnaf_kaggle_id == "your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat"
 
 
 def test_all_options():
