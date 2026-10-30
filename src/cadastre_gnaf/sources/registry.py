@@ -3,7 +3,9 @@ from cadastre_gnaf.sources.source import Source
 
 SOURCES = {
     "NSW": Source(
-        url="https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Cadastre/MapServer/9",
+        # Same Lot layer as the legacy SIX Maps service (maps.six.nsw.gov.au/.../NSW_Cadastre/MapServer/9),
+        # but ~50x faster and without the 120 s query timeouts under parallel load.
+        url="https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Land_Parcel_Property_Theme/FeatureServer/8",
         keys=keys_nsw, licence="CC BY, (c) NSW Spatial Services (DCS)"),
     "VIC": Source(
         url="https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/ArcGIS/rest/services/Vicmap_Parcel/FeatureServer/0",

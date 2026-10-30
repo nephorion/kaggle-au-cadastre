@@ -87,8 +87,10 @@ The process exits with code 1 if any state failed to download. Re-run the same c
 ## How it works
 
 1. **Download** (`cadastre_gnaf.download`): reads each layer's ObjectID range, then fetches pages
-   of `[lo, hi)` ObjectID ranges in parallel. Truncated pages are split in half until the server
-   returns them whole, and gaps in the ObjectIDs are skipped. Esri JSON polygons are converted to
+   of `[lo, hi)` ObjectID ranges through a sliding window of parallel requests. Workers never wait
+   on each other, so one slow or failing request doesn't stall the others, while pages are still
+   written in ObjectID order so a resumed run starts at the right place. Truncated pages are split
+   in half until the server returns them whole, and large gaps in the ObjectIDs are skipped. Esri JSON polygons are converted to
    WKT in pure Python, with a representative point that is guaranteed to lie inside the parcel.
 2. **Key candidates** (`cadastre_gnaf.keys`): each state builds several candidate keys in G-NAF's
    `LEGAL_PARCEL_ID` format (for example `13/31993` or `11/C/3625` for NSW, `66/RP139841` for QLD).
@@ -114,7 +116,7 @@ src/cadastre_gnaf/
 ├── arcgis/              make_session, arcgis_get, layer_info, feature_count, oid_bounds, fetch_range
 ├── storage/             parcels_path, links_path, read/write_progress, append_csv
 ├── tabular/             output_columns, rows_from_items, features_to_items, epoch_ms_to_date
-├── download/            page_size, page_ranges, download_arcgis_state, load_local_state, run_downloads
+├── download/            page_size, fetch_in_order, download_arcgis_state, load_local_state, run_downloads
 ├── gnaf/                GnafSource, open_gnaf, open_table, read_table, read_address_*, download_file
 ├── linking/             score_keys, choose_keys, key_links, spatial_links, rewrite_parcels, finalise_state, run_gnaf
 └── report/              summary_rows, attribution_markdown, write_summary
