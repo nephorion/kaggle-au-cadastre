@@ -151,7 +151,7 @@ download and key matching run without them.
 uv run cadastre-gnaf                                    # everything, all open states
 uv run cadastre-gnaf --states NSW VIC --step download   # download only
 uv run cadastre-gnaf --step gnaf                        # G-NAF matching + publish (after downloading)
-uv run cadastre-gnaf --step publish                     # rewrite the Parquet files only
+uv run cadastre-gnaf --step publish                     # rewrite the Parquet + CSV files only
 uv run cadastre-gnaf --step docs --kaggle-id me/au-cadastre   # rebuild README + data dictionary only
 uv run cadastre-gnaf --compress --workers 8 --out D:/cadastre
 uv run cadastre-gnaf --local SA=/data/sa/Parcel_Cadastre.shp --states SA
@@ -161,7 +161,7 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--states` | all | States to build (SA/NT need `--local`) |
-| `--step` | `all` | `download`, `gnaf` (matching + publish), `all`, `publish` (only the Parquet files), or `docs` (only the dataset docs) |
+| `--step` | `all` | `download`, `gnaf` (matching + publish), `all`, `publish` (only the Parquet + CSV files), or `docs` (only the dataset docs) |
 | `--out` | `./cadastre_out` | Output folder: the publishable dataset |
 | `--work` | `./cadastre_work` | Working folder: staged CSVs, progress, G-NAF zip (about 2 GB) |
 | `--compress` | off | Gzip the working and published CSVs |
@@ -178,6 +178,42 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | `--kaggle-id` | `your-username/australian-cadastre-gnaf` | Kaggle dataset id written to `dataset-metadata.json` and used in the README's paths |
 
 The process exits with code 1 if any state failed to download. Re-run the same command to resume.
+
+## Regenerating the dataset
+
+The pipeline keeps its intermediate results in the work folder, so a re-run only redoes what is
+needed. Pick the command by what changed:
+
+| What changed | Command | Redoes | Time (all states) |
+|---|---|---|---|
+| Nothing yet: first build | `uv run cadastre-gnaf` | download, G-NAF matching, publish, docs | a few hours (downloads) |
+| The output layout or a harmonised mapping (`publish/field_map.py`, column code) | `uv run cadastre-gnaf --step publish` | Parquet + CSV files and docs, from the staged CSVs | ~15 min |
+| The G-NAF matching or linking code, or a new G-NAF release | `uv run cadastre-gnaf --step gnaf` | matching, then publish and docs | ~30 min |
+| Only README / data dictionary / Kaggle id | `uv run cadastre-gnaf --step docs --kaggle-id <user>/<slug>` | docs only | seconds |
+| The states' data (fresh snapshot from the servers) | `uv run cadastre-gnaf --force` | everything, re-downloading every state | a few hours |
+| A download was interrupted | re-run the same command | continues where it stopped | |
+
+All of these take `--states` to limit the run, e.g. `uv run cadastre-gnaf --states VIC --step gnaf`.
+That is safe: `summary.csv`, the README and the data dictionary always cover every state in the output
+folder, using the saved figures of the states not in the run.
+
+**Run large states one at a time.** On Windows we have seen an occasional native crash (segmentation
+fault) in pandas/pyarrow while one process handles several multi-million-row states in a row. A run per
+state avoids it, and a failed state can simply be re-run:
+
+```bash
+for s in ACT TAS QLD NSW VIC WA; do uv run cadastre-gnaf --states $s --step gnaf; done
+```
+
+```powershell
+foreach ($s in "ACT","TAS","QLD","NSW","VIC","WA") { uv run cadastre-gnaf --states $s --step gnaf }
+```
+
+A failed or interrupted step never leaves partial files: staged CSVs are rewritten through a `.tmp`
+file, and the published files are built in the work folder and moved into `cadastre_out` only when
+complete. If a state fails, the previous version of its files stays in place.
+
+Then [publish to Kaggle](#publishing-to-kaggle) (`kaggle datasets version` for an update).
 
 ## How it works
 
