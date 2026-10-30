@@ -15,3 +15,9 @@ def test_lists_existing_files_with_rows_and_sizes(dataset_out):
 def test_empty_folder(config):
     config.out_dir.mkdir()
     assert dataset_files(config) == []
+
+
+def test_includes_parcels_with_addresses(dataset_out):
+    (dataset_out.out_dir / "ACT_parcels_with_addresses.csv").write_text("source_oid,address_full\n1,x\n")
+    kinds = [(f["file"], f["kind"]) for f in dataset_files(dataset_out)]
+    assert ("ACT_parcels_with_addresses.csv", "parcel_addresses") in kinds

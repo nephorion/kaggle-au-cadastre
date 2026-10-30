@@ -52,3 +52,8 @@ def test_attribution_lines_only():
 def test_no_summary_or_attribution():
     md = kaggle_readme_markdown(FILES, [], "me/x")
     assert "## Coverage" not in md and "## Licences" not in md
+
+
+def test_parcels_with_addresses_example():
+    md = readme()
+    assert 'f"{DATA}/ACT_parcels_with_addresses.csv"' in md and "address_full" in md

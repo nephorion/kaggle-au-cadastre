@@ -1,7 +1,7 @@
 import pandas as pd
 
 from cadastre_gnaf.report.describe_column import describe_column
-from cadastre_gnaf.report.descriptions import LINK_COLUMNS, SUMMARY_COLUMNS
+from cadastre_gnaf.report.descriptions import ADDRESS_COLUMNS, LINK_COLUMNS, SUMMARY_COLUMNS
 from cadastre_gnaf.report.infer_type import infer_type
 from cadastre_gnaf.report.source_fields import source_fields
 
@@ -19,9 +19,10 @@ def dictionary_rows(config, files, sources, session=None):
     rows = []
     for f in files:
         sample = pd.read_csv(config.out_dir / f["file"], nrows=SAMPLE_ROWS, dtype=str, keep_default_na=False)
-        if f["kind"] == "parcels":
+        if f["kind"] in ("parcels", "parcel_addresses"):
             fields = source_fields(config, session, f["state"], sources[f["state"]])
-            described = {c: describe_column(c, f["state"], fields) for c in sample.columns}
+            described = {c: ADDRESS_COLUMNS[c] if f["kind"] == "parcel_addresses" and c in ADDRESS_COLUMNS
+                         else describe_column(c, f["state"], fields) for c in sample.columns}
         else:
             known = LINK_COLUMNS if f["kind"] == "links" else SUMMARY_COLUMNS
             described = {c: known.get(c, (None, "")) for c in sample.columns}

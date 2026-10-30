@@ -1,5 +1,5 @@
 from cadastre_gnaf.report.count_rows import count_rows
-from cadastre_gnaf.storage import links_path, parcels_path
+from cadastre_gnaf.storage import links_path, parcel_addresses_path, parcels_path
 
 
 def dataset_files(config):
@@ -9,7 +9,10 @@ def dataset_files(config):
         for kind, path, text in (
                 ("parcels", parcels_path(config, st), f"{st} land parcels: keys, G-NAF columns, "
                                                       "source attributes, interior point and WKT geometry"),
-                ("links", links_path(config, st), f"{st} G-NAF address -> parcel links")):
+                ("links", links_path(config, st), f"{st} G-NAF address -> parcel links"),
+                ("parcel_addresses", parcel_addresses_path(config, st),
+                 f"{st} parcels with their G-NAF addresses inline: one row per parcel and address, "
+                 "empty address columns where none is linked")):
             if path.exists():
                 files.append({"file": path.name, "state": st, "kind": kind, "rows": count_rows(path),
                               "size_mb": round(path.stat().st_size / 1e6, 1), "description": text})

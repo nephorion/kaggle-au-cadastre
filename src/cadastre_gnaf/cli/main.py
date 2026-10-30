@@ -4,7 +4,8 @@ import time
 from cadastre_gnaf.arcgis import make_session
 from cadastre_gnaf.cli.parse_config import parse_config
 from cadastre_gnaf.download import run_downloads
-from cadastre_gnaf.linking import run_gnaf
+from cadastre_gnaf.gnaf import open_gnaf
+from cadastre_gnaf.linking import run_gnaf, run_parcel_addresses
 from cadastre_gnaf.report import write_dataset_docs, write_summary
 
 
@@ -21,9 +22,12 @@ def main(argv=None):
     failures, summaries = {}, []
     if config.do_download:
         failures = run_downloads(config, session)
+    gnaf = open_gnaf(config, session) if config.do_gnaf or config.do_addresses else None
     if config.do_gnaf:
-        summaries = run_gnaf(config, session)
-    if config.step != "docs":
+        summaries = run_gnaf(config, session, gnaf=gnaf)
+    if config.do_addresses:
+        run_parcel_addresses(config, session, gnaf)
+    if config.step not in ("addresses", "docs"):
         write_summary(config, summaries)
     write_dataset_docs(config, session)
     print(f"finished in {(time.time() - t0) / 3600:.2f} h" + (f"; failed: {list(failures)}" if failures else ""))

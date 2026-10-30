@@ -26,3 +26,12 @@ def test_types_descriptions_and_examples(dataset_out):
     assert wkt.endswith("...") and len(wkt) == 60
     assert rows[("ACT_gnaf_address_parcel_links.csv", "method")]["example"] == "legal_parcel_id"
     assert rows[("summary.csv", "licence")]["type"] == "string"
+
+
+def test_parcels_with_addresses_columns(dataset_out):
+    (dataset_out.out_dir / "ACT_parcels_with_addresses.csv").write_text(
+        "source_oid,ADDRESSES,address_full,address_lon\n1,a,1 A ST,149.5\n")
+    rows = rows_by_column(dataset_out)
+    assert rows[("ACT_parcels_with_addresses.csv", "address_full")]["description"].startswith("One-line address")
+    assert rows[("ACT_parcels_with_addresses.csv", "address_lon")]["type"] == "number"
+    assert rows[("ACT_parcels_with_addresses.csv", "ADDRESSES")]["description"].startswith("ACT source attribute")

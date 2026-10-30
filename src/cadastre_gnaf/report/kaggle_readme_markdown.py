@@ -28,7 +28,8 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
     out = [f"# {TITLE}", "", f"*{SUBTITLE}.*", "",
            f"{total:,} land parcels from the open state cadastres of {', '.join(states) or 'Australia'}, "
            "one CSV per state, each parcel keyed to **G-NAF** (Geoscape's Geocoded National Address File) "
-           "through its `LEGAL_PARCEL_ID`, plus an address-to-parcel link table per state.", "",
+           "through its `LEGAL_PARCEL_ID`, plus an address-to-parcel link table per state and a parcels file "
+           "with the addresses already joined in.", "",
            "Each parcel row has:", "",
            "- the parcel's attributes as published by the state",
            "- `gnaf_legal_parcel_id`, `gnaf_key_matched` and `gnaf_address_count`",
@@ -68,7 +69,18 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             f'parcels = pd.read_csv(f"{{DATA}}/{ex}_parcels.csv", usecols=cols)',
             "parcels.head()",
             "```", "",
-            "### Addresses per parcel", "",
+            "### Parcels with their addresses (no join needed)", "",
+            "`<STATE>_parcels_with_addresses.csv` has one row per parcel and address: a parcel with three "
+            "addresses appears three times, and a parcel without an address appears once with empty "
+            "`address_*` columns.", "",
+            "```python",
+            'pa = pd.read_csv(f"{DATA}/' + ex + '_parcels_with_addresses.csv",',
+            '                 usecols=lambda c: c != "wkt", dtype={"address_postcode": str})',
+            'pa[["source_oid", "gnaf_legal_parcel_id", "address_full", "address_lon", "address_lat"]].head()',
+            "",
+            "unaddressed = pa[pa[\"address_detail_pid\"].isna()]",
+            "```", "",
+            "### Addresses per parcel (from the link table)", "",
             "```python",
             f'links = pd.read_csv(f"{{DATA}}/{ex}_gnaf_address_parcel_links.csv")',
             'print(links["method"].value_counts())',

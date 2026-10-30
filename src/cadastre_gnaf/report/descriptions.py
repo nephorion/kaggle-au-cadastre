@@ -42,6 +42,22 @@ LINK_COLUMNS = {
                                 "polygon, for addresses the key did not link)."),
 }
 
+ADDRESS_COLUMNS = {
+    "address_detail_pid": ("string", "G-NAF address identifier (`ADDRESS_DETAIL_PID`); empty if the parcel has "
+                                     "no linked address."),
+    "address_link_method": ("string", "How the address was linked: `legal_parcel_id` or `spatial_within`."),
+    "address_full": ("string", "One-line address, e.g. `UNIT 2, 134 ARANDA STREET, BELCONNEN ACT 2614`."),
+    "address_building_name": ("string", "Building or complex name."),
+    "address_flat": ("string", "Flat type and number, e.g. `UNIT 2`."),
+    "address_level": ("string", "Level type code and number, e.g. `L 3`."),
+    "address_number": ("string", "Street number or range (e.g. `12A`, `10-14`), else `LOT <n>`."),
+    "address_street": ("string", "Street name, type and suffix, e.g. `ARANDA STREET`."),
+    "address_locality": ("string", "Suburb or locality name."),
+    "address_postcode": ("string", "Postcode."),
+    "address_lon": ("number", "Longitude of the address's G-NAF default geocode (EPSG:4326, GDA2020)."),
+    "address_lat": ("number", "Latitude of the address's G-NAF default geocode (EPSG:4326, GDA2020)."),
+}
+
 SUMMARY_COLUMNS = {
     "state": ("string", "State or territory code."),
     "source": ("string", "Source service URL (or local file)."),

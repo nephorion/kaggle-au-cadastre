@@ -22,9 +22,10 @@ def test_progress_dir_under_out_dir():
     assert Config(out_dir=Path("x")).progress_dir == Path("x") / "_progress"
 
 
-@pytest.mark.parametrize(("step", "download", "gnaf"), [
-    ("all", True, True), ("download", True, False), ("gnaf", False, True),
+@pytest.mark.parametrize(("step", "download", "gnaf", "addresses"), [
+    ("all", True, True, True), ("download", True, False, False), ("gnaf", False, True, True),
+    ("addresses", False, False, True), ("docs", False, False, False),
 ])
-def test_step_flags(step, download, gnaf):
+def test_step_flags(step, download, gnaf, addresses):
     c = Config(step=step)
-    assert (c.do_download, c.do_gnaf) == (download, gnaf)
+    assert (c.do_download, c.do_gnaf, c.do_addresses) == (download, gnaf, addresses)

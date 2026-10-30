@@ -7,6 +7,7 @@ examples:
   cadastre-gnaf                                    # everything, all open states
   cadastre-gnaf --states NSW VIC --step download
   cadastre-gnaf --step gnaf                        # G-NAF matching only (after downloading)
+  cadastre-gnaf --step addresses                   # parcels-with-addresses files only (after gnaf)
   cadastre-gnaf --step docs --kaggle-id me/au-cadastre   # rebuild README + data dictionary only
   cadastre-gnaf --compress --workers 8 --out D:/cadastre
   cadastre-gnaf --local SA=/data/sa/Parcel_Cadastre.shp --states SA
@@ -19,8 +20,9 @@ def build_parser():
                                  epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--states", nargs="+", default=list(DEFAULT_STATES),
                     help="states to build (default: all; SA/NT need --local)")
-    ap.add_argument("--step", choices=["all", "download", "gnaf", "docs"], default="all",
-                    help="download parcels, G-NAF matching, both (default), or only rebuild the dataset docs")
+    ap.add_argument("--step", choices=["all", "download", "gnaf", "addresses", "docs"], default="all",
+                    help="download parcels, G-NAF matching, both (default), only the parcels-with-addresses "
+                         "files, or only the dataset docs")
     ap.add_argument("--out", default="./cadastre_out", help="output folder for the CSVs")
     ap.add_argument("--work", default="./cadastre_work", help="scratch folder (G-NAF zip, ~1.5 GB)")
     ap.add_argument("--compress", action="store_true", help="write .csv.gz instead of .csv")

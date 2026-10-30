@@ -116,13 +116,17 @@ def config(tmp_path):
 
 
 ADDRESS_DETAIL = (
-    "ADDRESS_DETAIL_PID|DATE_RETIRED|LEGAL_PARCEL_ID|OTHER\n"
-    "GAACT1|| CANB/BRAD/18/41 |x\n"
-    "GAACT2||CANB/BRAD/18/41|x\n"
-    "GAACT3||CANB/BRAD/18/42|x\n"
-    "GAACT4|2020-01-01|CANB/BRAD/18/41|x\n"
-    "GAACT5|||x\n"
+    "ADDRESS_DETAIL_PID|DATE_RETIRED|LEGAL_PARCEL_ID|OTHER|FLAT_TYPE_CODE|FLAT_NUMBER|NUMBER_FIRST|"
+    "STREET_LOCALITY_PID|LOCALITY_PID|POSTCODE\n"
+    "GAACT1|| CANB/BRAD/18/41 |x|UNIT|1|12|ST1|LOC1|2612\n"
+    "GAACT2||CANB/BRAD/18/41|x|UNIT|2|12|ST1|LOC1|2612\n"
+    "GAACT3||CANB/BRAD/18/42|x|||14|ST1|LOC1|2612\n"
+    "GAACT4|2020-01-01|CANB/BRAD/18/41|x|||12|ST1|LOC1|2612\n"
+    "GAACT5|||x||||||\n"
 )
+STREET_LOCALITY = ("STREET_LOCALITY_PID|DATE_RETIRED|STREET_NAME|STREET_TYPE_CODE|STREET_SUFFIX_CODE\n"
+                   "ST1||LONSDALE|STREET|\n")
+LOCALITY = "LOCALITY_PID|DATE_RETIRED|LOCALITY_NAME\nLOC1||BRADDON\n"
 ADDRESS_DEFAULT_GEOCODE = (
     "ADDRESS_DETAIL_PID|DATE_RETIRED|LONGITUDE|LATITUDE\n"
     "GAACT1||149.5|-34.5\n"
@@ -135,11 +139,13 @@ ADDRESS_DEFAULT_GEOCODE = (
 
 @pytest.fixture
 def gnaf_zip_path(tmp_path):
-    """A G-NAF-shaped zip with ACT ADDRESS_DETAIL and ADDRESS_DEFAULT_GEOCODE tables."""
+    """A G-NAF-shaped zip with the ACT ADDRESS_DETAIL, ADDRESS_DEFAULT_GEOCODE, STREET_LOCALITY and LOCALITY tables."""
     path = tmp_path / "gnaf.zip"
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("G-NAF/G-NAF AUG 2026/Standard/ACT_ADDRESS_DETAIL_psv.psv", ADDRESS_DETAIL)
         z.writestr("G-NAF/G-NAF AUG 2026/Standard/ACT_ADDRESS_DEFAULT_GEOCODE_psv.psv", ADDRESS_DEFAULT_GEOCODE)
+        z.writestr("G-NAF/G-NAF AUG 2026/Standard/ACT_STREET_LOCALITY_psv.psv", STREET_LOCALITY)
+        z.writestr("G-NAF/G-NAF AUG 2026/Standard/ACT_LOCALITY_psv.psv", LOCALITY)
     return path
 
 
@@ -151,6 +157,8 @@ def gnaf_dir(tmp_path):
     std.mkdir(parents=True)
     (std / "ACT_ADDRESS_DETAIL_psv.psv").write_text(ADDRESS_DETAIL)
     (std / "ACT_ADDRESS_DEFAULT_GEOCODE_psv.psv").write_text(ADDRESS_DEFAULT_GEOCODE)
+    (std / "ACT_STREET_LOCALITY_psv.psv").write_text(STREET_LOCALITY)
+    (std / "ACT_LOCALITY_psv.psv").write_text(LOCALITY)
     return root
 
 

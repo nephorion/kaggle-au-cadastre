@@ -9,7 +9,7 @@ from cadastre_gnaf.constants import DEFAULT_STATES
 @dataclass(frozen=True)
 class Config:
     states: tuple[str, ...] = DEFAULT_STATES
-    step: str = "all"                                   # "all" | "download" | "gnaf" | "docs"
+    step: str = "all"                                   # "all" | "download" | "gnaf" | "addresses" | "docs"
     out_dir: Path = Path("./cadastre_out")
     work_dir: Path = Path("./cadastre_work")
     compress: bool = False
@@ -44,3 +44,7 @@ class Config:
     @property
     def do_gnaf(self) -> bool:
         return self.step in ("all", "gnaf")
+
+    @property
+    def do_addresses(self) -> bool:
+        return self.step in ("all", "gnaf", "addresses")
