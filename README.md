@@ -17,11 +17,11 @@ The command-line tool `cadastre-gnaf` builds the whole dataset:
 - [The dataset](#the-dataset)
 - [How the dataset is created](#how-the-dataset-is-created)
 - [Building it from scratch](#building-it-from-scratch)
+- [Publishing to Kaggle](#publishing-to-kaggle)
 - [File layout](#file-layout)
 - [Data sources](#data-sources)
 - [Installation](#installation) and [Usage](#usage)
 - [Regenerating the dataset](#regenerating-the-dataset)
-- [Publishing to Kaggle](#publishing-to-kaggle)
 - [Project layout](#project-layout) and [Development](#development)
 
 ## The dataset
@@ -176,6 +176,32 @@ uv run kaggle datasets create -p cadastre_out --dir-mode zip
 
 A plain `uv run cadastre-gnaf` runs steps 2 and 3 in one process. That works, but on Windows it has
 occasionally crashed on the large states (see [Regenerating the dataset](#regenerating-the-dataset)).
+
+## Publishing to Kaggle
+
+The output folder is a ready-to-upload Kaggle dataset. The [Kaggle CLI](https://github.com/Kaggle/kaggle-api)
+is a dev dependency, so `uv sync` installs it and `uv run kaggle` runs it.
+
+1. Get an API token: on kaggle.com go to **Settings → API → Create New Token** and save the downloaded
+   `kaggle.json` as `~/.kaggle/kaggle.json` (Windows: `C:\Users\<you>\.kaggle\kaggle.json`). It holds
+   your username and key; keep it out of the repository.
+2. Choose the dataset id `<your-kaggle-username>/<slug>`. Your username is the last part of your
+   profile address (`kaggle.com/<username>`); the slug is any lower-case name with hyphens.
+3. Write the id into the metadata and upload:
+
+```bash
+uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
+uv run kaggle datasets create -p cadastre_out --dir-mode zip                 # first upload
+uv run kaggle datasets version -p cadastre_out --dir-mode zip -m "Refresh"   # later updates
+```
+
+`--dir-mode zip` is required: the data files are in the `parquet/` and `csv/` subfolders, which the
+CLI skips by default. It zips each folder for the upload (the CSVs compress well), and Kaggle unpacks
+them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/<slug>/parquet/NSW_parcels.parquet`.
+
+`dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
+id, title, licence, the README as the dataset description, and a description of every column (shown in
+Kaggle's data explorer).
 
 ## File layout
 
@@ -376,32 +402,6 @@ file, and the published files are built in the work folder and moved into `cadas
 complete. If a state fails, the previous version of its files stays in place.
 
 Then [publish to Kaggle](#publishing-to-kaggle) (`kaggle datasets version` for an update).
-
-## Publishing to Kaggle
-
-The output folder is a ready-to-upload Kaggle dataset. The [Kaggle CLI](https://github.com/Kaggle/kaggle-api)
-is a dev dependency, so `uv sync` installs it and `uv run kaggle` runs it.
-
-1. Get an API token: on kaggle.com go to **Settings → API → Create New Token** and save the downloaded
-   `kaggle.json` as `~/.kaggle/kaggle.json` (Windows: `C:\Users\<you>\.kaggle\kaggle.json`). It holds
-   your username and key; keep it out of the repository.
-2. Choose the dataset id `<your-kaggle-username>/<slug>`. Your username is the last part of your
-   profile address (`kaggle.com/<username>`); the slug is any lower-case name with hyphens.
-3. Write the id into the metadata and upload:
-
-```bash
-uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
-uv run kaggle datasets create -p cadastre_out --dir-mode zip                 # first upload
-uv run kaggle datasets version -p cadastre_out --dir-mode zip -m "Refresh"   # later updates
-```
-
-`--dir-mode zip` is required: the data files are in the `parquet/` and `csv/` subfolders, which the
-CLI skips by default. It zips each folder for the upload (the CSVs compress well), and Kaggle unpacks
-them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/<slug>/parquet/NSW_parcels.parquet`.
-
-`dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
-id, title, licence, the README as the dataset description, and a description of every column (shown in
-Kaggle's data explorer).
 
 ## Project layout
 
