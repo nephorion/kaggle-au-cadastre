@@ -7,13 +7,24 @@ ROWS = [{"file": "A.csv", "column": "n", "type": "number", "description": "n"},
 
 
 def test_metadata():
-    m = kaggle_metadata("me/x", FILES, ROWS, "# readme")
+    m = kaggle_metadata("me/x", FILES, ROWS, "# readme", "Sources: x")
     assert m["id"] == "me/x" and m["description"] == "# readme"
     assert 6 <= len(m["title"]) <= 50 and 20 <= len(m["subtitle"]) <= 80
     assert m["licenses"] == [{"name": "other"}]
-    assert m["resources"] == [{"path": "A.csv", "description": "File A", "schema": {"fields": [
+    assert m["userSpecifiedSources"] == "Sources: x" and m["expectedUpdateFrequency"] == "quarterly"
+    assert m["resources"][0] == {"path": "A.csv", "description": "File A", "schema": {"fields": [
         {"name": "n", "description": "n", "type": "numeric"},
-        {"name": "d", "description": "d", "type": "datetime"}]}}]
+        {"name": "d", "description": "d", "type": "datetime"}]}}
+
+
+def test_documentation_files_are_described():
+    resources = kaggle_metadata("me/x", FILES, ROWS, "")["resources"]
+    assert [r["path"] for r in resources[1:]] == ["README.md", "ATTRIBUTION.md", "data_dictionary.md",
+                                                  "data_dictionary.csv"]
+    assert all(r["description"] for r in resources)
+    dd = resources[-1]["schema"]["fields"]
+    assert [f["name"] for f in dd] == ["file", "column", "type", "description", "example"]
+    assert all(f["description"] for f in dd)
 
 
 def test_unknown_type_is_string():

@@ -14,6 +14,7 @@ PARCELS = pa.table({
     "gnaf_key_matched": [True, False],
     "gnaf_address_detail_pids": pa.array([["GAACT1", "GAACT2"], None], pa.list_(pa.string())),
     "point_lon": [149.5, 150.5],
+    "point_lat": [-34.5, -34.5],
     "OBJECTID": pa.array([1, 2], pa.int64()),
     "ADDRESSES": ["1 A ST\n2 A ST", None],
     "LAST_UPDATE": pa.array([dt.date(2026, 1, 2), None], pa.date32()),

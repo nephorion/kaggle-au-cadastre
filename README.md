@@ -200,8 +200,37 @@ CLI skips by default. It zips each folder for the upload (the CSVs compress well
 them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/<slug>/parquet/NSW_parcels.parquet`.
 
 `dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
-id, title, licence, the README as the dataset description, and a description of every column (shown in
-Kaggle's data explorer).
+id, title, licence, the README as the dataset description, the sources (provenance), the expected update
+frequency, and a description of every file and column (shown in Kaggle's data explorer). The docs step also
+draws `dataset-cover-image.png`, a density map of every parcel, which the CLI uploads as the cover image
+rather than as a data file.
+
+To change only the description, cover and other metadata, without uploading the data again:
+
+```bash
+uv run cadastre-gnaf --step docs --kaggle-id <your-kaggle-username>/australian-cadastre-gnaf
+uv run python -m kaggle datasets metadata --update -p cadastre_out <your-kaggle-username>/australian-cadastre-gnaf
+```
+
+### Getting-started notebook
+
+Kaggle's usability score counts a public notebook that uses the dataset.
+[notebooks/getting_started.ipynb](notebooks/getting_started.ipynb) is one: it loads a state, compares states,
+plots a suburb's polygons and joins G-NAF addresses. To publish it, put it in a folder with a
+`kernel-metadata.json` like this one and run `uv run python -m kaggle kernels push -p <folder>`:
+
+```json
+{
+  "id": "<your-kaggle-username>/australian-land-parcels-getting-started",
+  "title": "Australian Land Parcels: Getting Started",
+  "code_file": "getting_started.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_internet": false,
+  "dataset_sources": ["<your-kaggle-username>/australian-cadastre-gnaf"]
+}
+```
 
 ## File layout
 
