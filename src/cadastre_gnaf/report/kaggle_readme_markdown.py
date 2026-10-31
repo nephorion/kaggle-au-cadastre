@@ -17,6 +17,52 @@ def _pct(n, d):
     return "" if not n or not d else f"{n / d:.1%}"
 
 
+def _creation_markdown(gnaf_kaggle_id, gnaf_url, built):
+    """The "How this dataset was created" section: the build pipeline, step by step."""
+    return [
+        "## How this dataset was created", "",
+        f"The dataset was built on {built:%d %B %Y} by the open-source `cadastre-gnaf` pipeline, in five steps. "
+        "Every step is automatic, and the same commands rebuild the dataset from a fresh snapshot.", "",
+        "```",
+        "state ArcGIS services ──► 1. download ──► 2. candidate keys ──► 3. link G-NAF ◄── G-NAF release",
+        "                                                                     │",
+        "                          5. docs ◄── parquet/ + csv/ ◄── 4. harmonise & publish",
+        "```", "",
+        "**1. Download the state cadastres.** Every parcel was downloaded from each state's public ArcGIS REST "
+        "service (listed under [Licences and attribution](#licences-and-attribution)), in pages of ObjectID "
+        "ranges. Every attribute the state publishes was kept. Esri polygons were converted to WKT in "
+        "EPSG:4326 (6 decimals, about 0.1 m), with a point guaranteed to lie inside each parcel "
+        "(`point_lon`, `point_lat`). `summary.csv` compares the rows downloaded with the feature count each "
+        "service reported.", "",
+        "**2. Build candidate G-NAF keys.** G-NAF identifies a parcel by `LEGAL_PARCEL_ID`, and each state "
+        "writes it differently. From each parcel's attributes, several candidate keys were built in that format, "
+        "for example NSW `13/31993` or `11/C/3625` and QLD `66/RP139841`.", "",
+        "**3. Link G-NAF addresses.** The parcels were matched against the official G-NAF release (GDA2020, "
+        f"from data.gov.au), the same release as [{gnaf_kaggle_id}]({gnaf_url}). "
+        "Retired addresses were left out.", "",
+        "- *Key join*: each parcel uses the first candidate key that exists in G-NAF (`gnaf_legal_parcel_id`, "
+        "`gnaf_key_matched`). Every address with that key is linked to the parcel (method `legal_parcel_id`). "
+        "The match rate of each candidate is in `summary.csv`.",
+        "- *Geometry groups*: parcels with exactly the same polygon, such as stacked strata lots, share a "
+        "`geometry_group_id`, the lowest `source_oid` in the stack.",
+        "- *Spatial join*: WA's public layer has no lot/plan attributes, so WA addresses were linked by point "
+        "in polygon (method `spatial_within`). Each address goes to the **smallest** polygon containing its "
+        "G-NAF geocode, and to only one parcel per geometry group. Each address is therefore linked to "
+        "exactly one parcel.",
+        "- *Locality*: each parcel gets the most common locality of its linked addresses.", "",
+        "**4. Harmonise and publish.** Each state's attributes were mapped onto the shared "
+        "[harmonised columns](#2-harmonised-columns), such as lot, plan, tenure, status and stated area; the "
+        "mapping table below shows the rule for every column and state. Area and perimeter were computed in "
+        "Australian Albers equal-area (EPSG:3577), after repairing invalid polygons, so they compare across "
+        "states. The state's own attributes were kept as `src_*` columns, without redundant copies. Each state "
+        "was then written as a typed, zstd-compressed Parquet file and a CSV with the same columns.", "",
+        "**5. Document.** `summary.csv`, `ATTRIBUTION.md`, this README, the data dictionary (from the Parquet "
+        "schemas, sample values and the states' own field descriptions) and the Kaggle metadata were generated "
+        "from the published files.", "",
+        "**Checks.** Row counts in the published files match the download counts in `summary.csv`. The CSV and "
+        "Parquet files have identical columns, and every state's file has the same layout.", ""]
+
+
 def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None,
                            gnaf_kaggle_id="your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat"):
     """README.md for the Kaggle dataset: contents, coverage, usage examples and licences.
@@ -48,6 +94,10 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
            "with `gnaf_address_count` and `gnaf_link_methods`",
            "- `point_lon` / `point_lat`: a point guaranteed to lie inside the parcel",
            "- `wkt`: the boundary polygon (EPSG:4326)", "",
+           "**Contents:** [Files](#files) · [Coverage](#coverage) · "
+           "[How this dataset was created](#how-this-dataset-was-created) · [Columns](#columns) · "
+           "[Using the data on Kaggle](#using-the-data-on-kaggle) · [Caveats](#caveats) · "
+           "[Licences and attribution](#licences-and-attribution)", "",
            "## Files", "",
            "| File | Rows | Size (MB) | Contents |", "|---|---:|---:|---|"]
     out += [f"| `{f['file']}` | {f['rows']:,} | {f['size_mb']:,} | {f['description']} |" for f in files]
@@ -68,6 +118,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
                 "WA's public layer has geometry only, so WA addresses are linked spatially (address point inside "
                 "the parcel polygon) instead of by key.", ""]
 
+    out += _creation_markdown(gnaf_kaggle_id, gnaf_url, built)
     out += ["## Columns", "",
             "Every parcels file, for every state and in both formats, has the same layout:", "",
             "1. **Identity, G-NAF and geometry-group columns** (the same in every state)",
@@ -199,14 +250,6 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             '                      columns=["source_oid", "gnaf_legal_parcel_id", "gnaf_address_detail_pids"],',
             '                      filters=[("gnaf_address_count", ">", 0)])',
             "```", "",
-            "## How it was built", "",
-            "Parcels were paged out of each state's public ArcGIS REST service by ObjectID. Esri polygons were "
-            "converted to WKT and given an interior point. For each state several candidate keys in G-NAF's "
-            "`LEGAL_PARCEL_ID` format were built from the parcel attributes; each parcel uses the first candidate "
-            "that exists in G-NAF (match rates per candidate are in `summary.csv`). Addresses were then linked to "
-            "parcels by that key. WA's public layer has no lot/plan attributes, so WA addresses were linked with a "
-            "point-in-polygon join instead: each address goes to the smallest polygon containing its G-NAF "
-            "geocode, and to one parcel per stack of identical polygons.", "",
             "## Caveats", "",
             "- SA and NT cadastres are not open data and are not included.",
             "- Cadastral polygons are graphical representations only, not legal boundaries.",

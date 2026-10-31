@@ -83,3 +83,13 @@ def test_harmonised_columns_documented():
     assert "### 2. Harmonised columns" in md and "| `area_m2` | number |" in md
     assert "| Column | NSW | VIC | QLD | TAS | ACT | WA |" in md
     assert 'glob.glob(f"{DATA}/parquet/*_parcels.parquet")' in md
+
+
+def test_creation_process_documented_before_columns():
+    md = readme()
+    created = md.index("## How this dataset was created")
+    assert md.index("## Coverage") < created < md.index("## Columns")
+    assert "built on 30 October 2026" in md
+    for step in ("**1. Download", "**2. Build candidate", "**3. Link G-NAF", "**4. Harmonise", "**5. Document"):
+        assert step in md[created:md.index("## Columns")]
+    assert "(#how-this-dataset-was-created)" in md and "## How it was built" not in md
