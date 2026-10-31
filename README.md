@@ -232,6 +232,30 @@ plots a suburb's polygons and joins G-NAF addresses. To publish it, put it in a 
 }
 ```
 
+### Coverage and data quality notebook
+
+[notebooks/coverage_and_quality.ipynb](notebooks/coverage_and_quality.ipynb) is the report to read before using
+the data. It covers:
+
+- **Coverage:** parcels per state, and download completeness against each source's own count.
+- **Column completeness:** how filled each harmonised column is, per state.
+- **G-NAF linkage:** key matches, address coverage and link methods.
+- **The parcel population:** status, tenure, strata and roads.
+- **Data quality checks:** uniqueness, internal consistency, points inside Australia, area plausibility against
+  the area on the title, and timeliness.
+
+It reads no geometry and runs in seconds. Publish it the same way as the getting-started notebook, with
+`"code_file": "coverage_and_quality.ipynb"` and its own `id` and `title`.
+
+To run it locally against the output folder, from the repo root:
+
+```bash
+uv run --with jupyter --with matplotlib jupyter lab notebooks/coverage_and_quality.ipynb
+```
+
+Outside Kaggle it reads the folder in the `CADASTRE_DATA` environment variable, else `cadastre_out` in the current
+folder or the one above it.
+
 ## File layout
 
 Each state is published in its own files (`parquet/<STATE>_parcels.parquet` and `csv/<STATE>_parcels.csv`), and every
