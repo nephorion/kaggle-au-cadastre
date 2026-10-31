@@ -1,10 +1,33 @@
-# cadastre-gnaf
+# Australian Cadastre + G-NAF: dataset builder
 
-Download Australian state **cadastres** (land parcels) from public ArcGIS REST services and publish
-**one Parquet and one CSV file per state**. Each parcel carries the ids of its **G-NAF** (Geocoded National
-Address File) addresses, so it joins straight to any copy of G-NAF with no link table.
+This builds the **Australian Cadastre + G-NAF** dataset: about 12.5 million land parcels from six state
+cadastres in one shared layout. Each parcel lists the ids of its G-NAF addresses (G-NAF is the Geocoded
+National Address File), so it joins straight to G-NAF without a separate link table.
 
-The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload dataset:
+The command-line tool `cadastre-gnaf` builds the whole dataset:
+
+1. It downloads every parcel from the states' public ArcGIS REST services.
+2. It links each parcel to its G-NAF addresses.
+3. It harmonises the states' different attributes into one set of columns.
+4. It writes **one Parquet file and one CSV file per state**, plus a README, a data dictionary and the
+   Kaggle metadata, ready to upload as a Kaggle dataset.
+
+**Contents:**
+
+- [The dataset](#the-dataset)
+- [How the dataset is created](#how-the-dataset-is-created)
+- [Building it from scratch](#building-it-from-scratch)
+- [File layout](#file-layout)
+- [Data sources](#data-sources)
+- [Installation](#installation) and [Usage](#usage)
+- [Regenerating the dataset](#regenerating-the-dataset)
+- [Publishing to Kaggle](#publishing-to-kaggle)
+- [Project layout](#project-layout) and [Development](#development)
+
+## The dataset
+
+The output folder (`--out`, default `./cadastre_out`) is the complete dataset, with nothing else in
+it:
 
 | File | Contents |
 |------|----------|
@@ -15,6 +38,144 @@ The output folder (`--out`, default `./cadastre_out`) is a ready-to-upload datas
 | `data_dictionary.md` / `data_dictionary.csv` | Every column of every file: type, description and an example value |
 | `README.md` | Dataset README for Kaggle: files, coverage, usage examples, licences |
 | `dataset-metadata.json` | Kaggle dataset metadata (title, licence, per-column descriptions) for `kaggle datasets create` |
+
+Current build (G-NAF August 2026):
+
+| State | Parcels | Parcels whose key is in G-NAF | G-NAF addresses linked | Address link rate |
+|---|---:|---:|---:|---:|
+| NSW | 3,357,170 | 2,539,934 | 5,224,340 | 65% |
+| VIC | 4,310,370 | 3,468,800 | 4,411,310 | 94% |
+| QLD | 2,159,867 | 1,979,128 | 3,579,586 | 69% |
+| TAS | 439,979 | 295,535 | 376,517 | 90% |
+| ACT | 152,979 | 127,082 | 283,387 | 81% |
+| WA | 2,074,833 | – (spatial join) | 1,680,432 | 100% |
+
+SA and NT do not publish their cadastre as open data, so they are left out unless you supply a licensed
+copy (`--local`).
+
+## How the dataset is created
+
+The dataset is built in five stages. Each stage writes its results to disk before the next one starts, so
+a stage can be re-run on its own and an interrupted run resumes where it stopped.
+
+```
+ state ArcGIS services            G-NAF release (data.gov.au)
+          │                                 │
+          ▼                                 │
+ 1. Download ──► staging/<STATE>_parcels.csv │
+          │                                 │
+          ▼                                 ▼
+ 2. Candidate keys ──► 3. G-NAF matching ◄──┘
+                         (key join + spatial join, geometry groups, locality)
+                                  │
+                                  ▼
+                       4. Publish (harmonise, measure, type)
+                                  │
+                                  ▼
+            cadastre_out/parquet/*.parquet + csv/*.csv
+                                  │
+                                  ▼
+          5. Report: summary.csv, ATTRIBUTION.md, README.md,
+             data_dictionary.md/.csv, dataset-metadata.json
+```
+
+### 1. Download the state cadastres
+
+`cadastre_gnaf.download` downloads each state's parcel layer from its public ArcGIS REST service (see
+[Data sources](#data-sources)):
+
+- It reads the layer's ObjectID range, then fetches pages of `[lo, hi)` ObjectID ranges through a sliding
+  window of parallel requests (`--workers`).
+- One slow or failing request doesn't hold up the others, but pages are still written in ObjectID order,
+  so a resumed run starts at the right place.
+- A truncated page is split in half until the server returns it whole, and large gaps in the ObjectIDs
+  are skipped.
+- Esri JSON polygons are converted to WKT (EPSG:4326, `--decimals` places) in pure Python, together with
+  a point that is guaranteed to lie inside the parcel.
+
+Every attribute the state publishes is kept. Pages are appended to the staged CSV in the work folder
+(`cadastre_work/staging/<STATE>_parcels.csv`), and progress goes to `staging/_progress/<STATE>.json`.
+A state is marked done once its whole ObjectID range has been fetched. `summary.csv` shows the rows
+written next to the feature count the service reported, so you can check the two agree. This stage takes a few hours for all states and is limited by the servers.
+
+### 2. Build candidate G-NAF keys
+
+G-NAF identifies parcels by `LEGAL_PARCEL_ID`, and each state formats this id from its own attributes.
+`cadastre_gnaf.keys` builds several candidate keys per parcel, one per plausible format. For example,
+NSW gives `13/31993` or `11/C/3625`, and QLD gives `66/RP139841`. WA's public layer has no attributes,
+so it gets no key.
+
+### 3. Link G-NAF addresses
+
+`cadastre_gnaf.linking` reads the G-NAF release: it downloads the latest GDA2020 zip once into the work
+folder (about 2 GB), or uses `--gnaf-dir` / `--gnaf-zip-url`. The tables it uses are
+`ADDRESS_DETAIL`, `ADDRESS_DEFAULT_GEOCODE` and `LOCALITY`.
+
+- **Key join.** For each state it measures how many parcels each candidate key matches in G-NAF, and
+  takes each parcel's first matching candidate as its `gnaf_legal_parcel_id`. Addresses with that
+  `LEGAL_PARCEL_ID` are linked to the parcel (method `legal_parcel_id`). The match rate of every
+  candidate is reported in `summary.csv`.
+- **Geometry groups.** Parcels with an identical polygon, such as stacked strata lots, share a
+  `geometry_group_id`: the lowest `source_oid` in the stack.
+- **Spatial join** (states in `--spatial-join`, by default WA). Each address that the key did not link
+  goes to the **smallest** polygon that contains its geocode, and only to one parcel per geometry group.
+  This avoids linking one address to every stacked or overlapping polygon (method `spatial_within`).
+- **Locality.** It records each parcel's most common G-NAF locality.
+
+The staged CSV is then rewritten with the G-NAF columns: the parcel's key, whether the key matched, the
+address count, the list of `ADDRESS_DETAIL_PID`s and the link methods.
+
+### 4. Publish in the shared layout
+
+`cadastre_gnaf.publish` turns each staged CSV into the [shared layout](#file-layout):
+
+- It fills the harmonised columns (lot, plan, tenure, status, area and so on) from the state's own
+  fields. The rules are small declarative specs in [field_map.py](src/cadastre_gnaf/publish/field_map.py).
+- It measures area and perimeter in Australian Albers (EPSG:3577), so they are comparable across states.
+  Invalid polygons are repaired first.
+- It renames the state's attributes to `src_*` and drops redundant ones: ObjectID copies, the services'
+  own `Shape__Area`/`Shape__Length`, and the candidate keys.
+- It writes a typed, zstd-compressed Parquet file and a CSV with the same columns.
+
+Both files are built in the work folder and moved into `cadastre_out/parquet/` and `cadastre_out/csv/`
+only when they are complete, so a failed run never leaves a partial file in the dataset.
+
+### 5. Report and document
+
+`cadastre_gnaf.report` writes:
+
+- `summary.csv`: counts and match rates per state.
+- `ATTRIBUTION.md`: sources and licences.
+- The dataset docs:
+  - `data_dictionary.md` / `.csv`, built from the Parquet schemas, sample values and the source layers'
+    field aliases.
+  - The Kaggle `README.md`, with coverage, column tables and example code.
+  - `dataset-metadata.json`, with the Kaggle id, licence and a description of every column.
+
+The docs always cover every state in the output folder, so a run limited to `--states` still produces
+complete docs.
+
+## Building it from scratch
+
+```bash
+# 1. Install (Python 3.10+, uv)
+uv sync
+
+# 2. Download every open state (a few hours; re-run to resume after an interruption)
+uv run cadastre-gnaf --step download
+
+# 3. Link G-NAF and publish, one state per process (see the note in "Regenerating the dataset")
+for s in ACT TAS QLD NSW VIC WA; do uv run cadastre-gnaf --states $s --step gnaf; done
+
+# 4. Check the results
+cat cadastre_out/summary.csv          # parcels, key matches and link rate per state
+
+# 5. Upload to Kaggle (needs a Kaggle API token, see "Publishing to Kaggle")
+uv run kaggle datasets create -p cadastre_out --dir-mode zip
+```
+
+A plain `uv run cadastre-gnaf` runs steps 2 and 3 in one process. That works, but on Windows it has
+occasionally crashed on the large states (see [Regenerating the dataset](#regenerating-the-dataset)).
 
 ## File layout
 
@@ -215,32 +376,6 @@ file, and the published files are built in the work folder and moved into `cadas
 complete. If a state fails, the previous version of its files stays in place.
 
 Then [publish to Kaggle](#publishing-to-kaggle) (`kaggle datasets version` for an update).
-
-## How it works
-
-1. **Download** (`cadastre_gnaf.download`): reads each layer's ObjectID range, then fetches pages
-   of `[lo, hi)` ObjectID ranges through a sliding window of parallel requests. Workers never wait
-   on each other, so one slow or failing request doesn't stall the others, while pages are still
-   written in ObjectID order so a resumed run starts at the right place. Truncated pages are split
-   in half until the server returns them whole, and large gaps in the ObjectIDs are skipped. Esri JSON polygons are converted to
-   WKT in pure Python, with a representative point that is guaranteed to lie inside the parcel.
-2. **Key candidates** (`cadastre_gnaf.keys`): each state builds several candidate keys in G-NAF's
-   `LEGAL_PARCEL_ID` format (for example `13/31993` or `11/C/3625` for NSW, `66/RP139841` for QLD).
-3. **G-NAF matching** (`cadastre_gnaf.linking`): measures how many parcels each candidate matches,
-   picks the first matching candidate per parcel, links G-NAF addresses to parcels by that key and
-   rewrites the staged CSV with the G-NAF columns, including each parcel's address ids. States listed
-   in `--spatial-join` also get a spatial join for addresses that the key did not link: each address
-   goes to the smallest polygon containing its geocode, and to one parcel per stack of identical
-   polygons (the stack's `geometry_group_id`).
-   It also records each parcel's most common G-NAF locality and groups identical polygons.
-4. **Publish** (`cadastre_gnaf.publish`): turns each staged CSV into the [shared layout](#file-layout):
-   fills the harmonised columns from the state's fields (`field_map.py`), measures area and perimeter in
-   Australian Albers (EPSG:3577), renames the state's attributes to `src_*` and drops the redundant ones.
-   It then writes a zstd-compressed Parquet file, typed from the data dictionary, and a CSV with the
-   same columns. Both are built in the work folder and moved into the output folder only when complete.
-5. **Report** (`cadastre_gnaf.report`): writes `summary.csv` and `ATTRIBUTION.md`, then the dataset
-   docs: a data dictionary built from the Parquet schemas, sample values and the source layers'
-   field metadata (aliases), a Kaggle README and `dataset-metadata.json`.
 
 ## Publishing to Kaggle
 
