@@ -13,7 +13,7 @@ def rows_by_column(config):
 
 def test_one_row_per_file_and_column(dataset_out):
     rows = rows_by_column(dataset_out)
-    assert len([k for k in rows if k[0] == "parquet/ACT_parcels.parquet"]) == 10
+    assert len([k for k in rows if k[0] == "parquet/ACT_parcels.parquet"]) == 11
     assert len([k for k in rows if k[0] == "summary.csv"]) == 9
 
 

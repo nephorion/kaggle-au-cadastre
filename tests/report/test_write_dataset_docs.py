@@ -16,7 +16,9 @@ def test_writes_all_docs(dataset_out, capsys):
     assert "| ACT | 2 | 50.0% | 4 | 50.0% |" in readme and "- **ACT**: (c) ACT" in readme
     meta = json.loads((out / "dataset-metadata.json").read_text(encoding="utf-8"))
     assert meta["id"] == dataset_out.kaggle_id and meta["description"] == readme
-    assert [r["path"] for r in meta["resources"]] == ["parquet/ACT_parcels.parquet", "summary.csv"]
+    assert [r["path"] for r in meta["resources"]][:2] == ["parquet/ACT_parcels.parquet", "summary.csv"]
+    assert "- ACT cadastre: " in meta["userSpecifiedSources"]
+    assert (out / "dataset-cover-image.png").read_bytes().startswith(b"\x89PNG")
     pids = next(f for f in meta["resources"][0]["schema"]["fields"] if f["name"] == "gnaf_address_detail_pids")
     assert pids["type"] == "string"
     assert "dataset-metadata.json" in capsys.readouterr().out
