@@ -20,6 +20,19 @@ def test_long_queries_use_post(fake_session, fake_response):
     assert s.calls[0][0] == "POST"
 
 
+def test_token_requests_use_post(fake_session, fake_response):
+    s = fake_session(lambda m, u, p: fake_response({}))
+    arcgis_get(s, "http://x", {"token": "secret"}, sleep=no_sleep)
+    assert s.calls[0][0] == "POST"
+
+
+def test_token_is_redacted_from_final_error(fake_session):
+    s = fake_session(lambda m, u, p: requests.ConnectionError("http://x?token=secret refused"))
+    with pytest.raises(ArcGISError) as e:
+        arcgis_get(s, "http://x", {"token": "secret"}, retries=2, sleep=no_sleep)
+    assert "secret" not in str(e.value) and "<token>" in str(e.value)
+
+
 def test_retries_transient_errors_then_succeeds(fake_session, fake_response):
     responses = iter([fake_response({}, status_code=503), requests.ConnectionError("down"),
                       fake_response({"error": {"code": 500}}), fake_response({"ok": 1})])

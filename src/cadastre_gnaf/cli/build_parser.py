@@ -1,6 +1,6 @@
 import argparse
 
-from cadastre_gnaf.constants import DEFAULT_STATES
+from cadastre_gnaf.constants import DEFAULT_KAGGLE_ID, DEFAULT_STATES, TOKEN_ENV_PREFIX
 
 EPILOG = """\
 examples:
@@ -40,9 +40,10 @@ def build_parser():
     ap.add_argument("--local", nargs="*", default=[], metavar="STATE=PATH",
                     help="licensed/purchased data to use instead of a web service, e.g. SA=/data/sa.shp")
     ap.add_argument("--token", nargs="*", default=[], metavar="STATE=TOKEN",
-                    help="ArcGIS token for a subscription service, e.g. WA=<SLIP token>")
-    ap.add_argument("--kaggle-id", default="your-kaggle-username/australian-cadastre-gnaf",
+                    help="ArcGIS token for a subscription service, e.g. WA=<SLIP token>; prefer the "
+                         f"{TOKEN_ENV_PREFIX}<STATE> environment variable, which stays out of shell history")
+    ap.add_argument("--kaggle-id", default=DEFAULT_KAGGLE_ID,
                     help="Kaggle dataset id (owner/slug) written to dataset-metadata.json and the README")
-    ap.add_argument("--gnaf-kaggle-id", default="your-kaggle-username/gnaf-aug-2026-all-states-gda2020-flat",
+    ap.add_argument("--gnaf-kaggle-id", default=None,
                     help="Kaggle dataset with flat G-NAF (one CSV row per address) used in the README's join example")
     return ap

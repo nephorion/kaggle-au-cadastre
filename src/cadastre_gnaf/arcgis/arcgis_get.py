@@ -9,13 +9,16 @@ RETRY_STATUS = (429, 500, 502, 503, 504)
 
 
 def arcgis_get(session, url, params, retries=6, timeout=180, sleep=time.sleep):
-    """GET (POST for long queries) with retries; raises on ArcGIS JSON errors after retries."""
+    """GET (POST for long queries) with retries; raises on ArcGIS JSON errors after retries.
+
+    Requests with a token always POST, so the token is never in a URL that error messages or logs repeat.
+    """
     params = {"f": "json", **params}
+    use_post = len(str(params)) > 1500 or "token" in params
     last = None
     for attempt in range(retries):
         try:
-            long_q = len(str(params)) > 1500
-            r = (session.post(url, data=params, timeout=timeout) if long_q
+            r = (session.post(url, data=params, timeout=timeout) if use_post
                  else session.get(url, params=params, timeout=timeout))
             if r.status_code in RETRY_STATUS:
                 raise ArcGISError(f"HTTP {r.status_code}")
@@ -27,4 +30,7 @@ def arcgis_get(session, url, params, retries=6, timeout=180, sleep=time.sleep):
         except (requests.RequestException, ValueError, ArcGISError) as e:
             last = e
             sleep(min(60, 2 ** attempt + random.random()))
-    raise ArcGISError(f"{url} failed after {retries} tries: {last}")
+    msg = str(last)
+    if params.get("token"):
+        msg = msg.replace(params["token"], "<token>")
+    raise ArcGISError(f"{url} failed after {retries} tries: {msg}")
