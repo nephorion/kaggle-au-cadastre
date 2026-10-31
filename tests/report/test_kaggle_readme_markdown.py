@@ -28,6 +28,12 @@ def test_files_and_totals():
     assert "`data_dictionary.md` / `.csv`" in md
 
 
+def test_links_the_source_repository():
+    md = readme()
+    assert "[github.com/nephorion/kaggle-au-cadastre](https://github.com/nephorion/kaggle-au-cadastre)" in md
+    assert "open-source [`cadastre-gnaf`](https://github.com/nephorion/kaggle-au-cadastre) pipeline" in md
+
+
 def test_coverage_skips_states_without_parcels():
     md = readme()
     assert "| ACT | 100 | 80.0% | 60 | 90.0% |" in md
