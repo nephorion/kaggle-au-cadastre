@@ -6,6 +6,9 @@ DEFAULT_STATES = ("NSW", "VIC", "QLD", "TAS", "ACT", "WA", "SA", "NT")
 GNAF_PACKAGE_ID = "19432f89-dc3a-4ef3-b943-5326ef1dbecc"
 GNAF_PACKAGE_API = "https://data.gov.au/data/api/3/action/package_show"
 
+# Source code of the pipeline, linked from the dataset README.
+REPO_URL = "https://github.com/nephorion/kaggle-au-cadastre"
+
 # Placeholder Kaggle dataset id; `kaggle datasets create` rejects it until --kaggle-id names a real one.
 DEFAULT_KAGGLE_ID = "your-kaggle-username/australian-cadastre-gnaf"
 

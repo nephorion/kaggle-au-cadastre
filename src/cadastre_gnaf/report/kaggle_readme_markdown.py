@@ -1,6 +1,6 @@
 import datetime as dt
 
-from cadastre_gnaf.constants import HARMONISED_COLUMNS, LEADING_COLUMNS
+from cadastre_gnaf.constants import HARMONISED_COLUMNS, LEADING_COLUMNS, REPO_URL
 from cadastre_gnaf.publish.mapping_markdown import mapping_markdown
 from cadastre_gnaf.report.descriptions import HARMONISED_COLUMNS as HARMONISED
 from cadastre_gnaf.report.descriptions import PARCEL_COLUMNS
@@ -22,7 +22,8 @@ def _creation_markdown(gnaf_kaggle_id, gnaf_url, built):
     """The "How this dataset was created" section: the build pipeline, step by step."""
     return [
         "## How this dataset was created", "",
-        f"The dataset was built on {built:%d %B %Y} by the open-source `cadastre-gnaf` pipeline, in five steps. "
+        f"The dataset was built on {built:%d %B %Y} by the open-source [`cadastre-gnaf`]({REPO_URL}) pipeline, "
+        "in five steps. "
         "Every step is automatic, and the same commands rebuild the dataset from a fresh snapshot.", "",
         "```",
         "state ArcGIS services ──► 1. download ──► 2. candidate keys ──► 3. link G-NAF ◄── G-NAF release",
@@ -91,6 +92,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
            "addresses "
            "(Geoscape's Geocoded National Address File), so it joins straight to any copy of G-NAF with no "
            "link table.", "",
+           f"Built with open-source code: [{REPO_URL.removeprefix('https://')}]({REPO_URL}).", "",
            "Each state is in its own files, and every file has the same layout. Each parcel row has:", "",
            "- harmonised columns that mean the same in every state: lot, section, plan, tenure, status, "
            "area, locality and more",
