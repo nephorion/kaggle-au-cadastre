@@ -256,6 +256,14 @@ uv run --with jupyter --with matplotlib jupyter lab notebooks/coverage_and_quali
 Outside Kaggle it reads the folder in the `CADASTRE_DATA` environment variable, else `cadastre_out` in the current
 folder or the one above it.
 
+### Parcel density map notebook
+
+[notebooks/parcel_density_map.ipynb](notebooks/parcel_density_map.ipynb) rebuilds the dataset's cover image step
+by step. It counts parcel interior points per pixel, colours the counts on a log scale and saves a 1600 × 800 PNG,
+then zooms into a city so the street pattern shows. The pipeline itself makes the cover with
+[cover_image.py](src/cadastre_gnaf/report/cover_image.py). The notebook reads only `point_lon` and `point_lat`, and
+finds the data the same way as the quality notebook. Publish it with `"code_file": "parcel_density_map.ipynb"`.
+
 ## File layout
 
 Each state is published in its own files (`parquet/<STATE>_parcels.parquet` and `csv/<STATE>_parcels.csv`), and every
