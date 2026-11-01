@@ -13,4 +13,6 @@ def test_lists_published_states_gnaf_and_method():
     assert "- SA cadastre: licensed local file (" in text
     assert text.count("ACT cadastre") == 1 and "NSW" not in text
     assert "G-NAF" in text and "data.gov.au" in text
+    assert "https://www.kaggle.com/datasets/museofnephorion/australian-addresses-gnaf" in text
+    assert "kaggle.com/datasets/me/g" in provenance_text(FILES, SOURCES, "me/g")
     assert "https://github.com/nephorion/kaggle-au-cadastre" in text

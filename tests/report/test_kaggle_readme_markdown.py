@@ -43,7 +43,7 @@ def test_coverage_skips_states_without_parcels():
 
 def test_examples_use_kaggle_path_and_smallest_state():
     md = readme()
-    assert 'DATA = "/kaggle/input/au-parcels"' in md
+    assert 'DATA = "/kaggle/input/datasets/me/au-parcels"' in md
     assert 'pd.read_parquet(f"{DATA}/parquet/ACT_parcels.parquet", columns=cols)' in md
     assert "geopandas" in md and "links" not in md
 
@@ -60,17 +60,22 @@ def test_no_summary_or_attribution():
     assert "## Coverage" not in md and "## Licences" not in md
 
 
-def test_gnaf_join_example_without_a_gnaf_dataset_uses_a_placeholder():
+def test_links_the_companion_gnaf_dataset_and_joins_it_both_ways():
     md = readme()
-    assert 'GNAF = "/kaggle/input/<flat-gnaf-dataset>/gnaf_csv"' in md
-    assert 'glob.glob(f"{GNAF}/gnaf_ACT_*.csv")' in md and 'explode("gnaf_address_detail_pids")' in md
-    assert "kaggle.com/datasets" not in md and "(https://data.gov.au/data/dataset/" in md
+    link = "[museofnephorion/australian-addresses-gnaf](https://www.kaggle.com/datasets/museofnephorion/australian-addresses-gnaf)"
+    assert f"**Companion dataset:** {link}" in md and f"the same release as {link}" in md
+    assert 'GNAF = "/kaggle/input/datasets/museofnephorion/australian-addresses-gnaf"' in md
+    assert 'glob.glob(f"{GNAF}/gnaf_csv/gnaf_ACT_*.csv")' in md and 'explode("gnaf_address_detail_pids")' in md
+    assert 'pd.read_parquet(f"{GNAF}/gnaf_full.parquet"' in md and '("state_abbreviation", "==", "ACT")' in md
+    assert 'gnaf.merge(pid_to_parcel, how="left", on="address_detail_pid")' in md
+    assert "(https://data.gov.au/data/dataset/" in md
 
 
 def test_gnaf_dataset_is_configurable():
     md = kaggle_readme_markdown(FILES, [], "me/x", gnaf_kaggle_id="someone/my-gnaf")
-    assert '"/kaggle/input/my-gnaf/gnaf_csv"' in md and "[someone/my-gnaf](" in md
+    assert '"/kaggle/input/datasets/someone/my-gnaf"' in md
     assert "the same release as [someone/my-gnaf](https://www.kaggle.com/datasets/someone/my-gnaf)" in md
+    assert "australian-addresses-gnaf" not in md
 
 
 def test_csv_example():

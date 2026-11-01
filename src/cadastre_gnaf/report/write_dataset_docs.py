@@ -30,7 +30,8 @@ def write_dataset_docs(config, session=None, sources=SOURCES):
     readme = kaggle_readme_markdown(files, summary, config.kaggle_id, attribution,
                                     gnaf_kaggle_id=config.gnaf_kaggle_id)
     (out / "README.md").write_text(readme, encoding="utf-8")
-    meta = kaggle_metadata(config.kaggle_id, files, rows, readme, provenance_text(files, sources))
+    provenance = provenance_text(files, sources, config.gnaf_kaggle_id)
+    meta = kaggle_metadata(config.kaggle_id, files, rows, readme, provenance)
     (out / "dataset-metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     cover_image(config, files)
     print(f"dataset docs -> {out}: README.md, data_dictionary.md, data_dictionary.csv, dataset-metadata.json, "
