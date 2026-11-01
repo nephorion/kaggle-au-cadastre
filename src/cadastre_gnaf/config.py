@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from cadastre_gnaf.constants import DEFAULT_KAGGLE_ID, DEFAULT_STATES
+from cadastre_gnaf.constants import DEFAULT_KAGGLE_ID, DEFAULT_STATES, GNAF_KAGGLE_ID
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class Config:
     local_sources: dict[str, str] = field(default_factory=dict)
     arcgis_tokens: dict[str, str] = field(default_factory=dict)   # e.g. {"WA": "<SLIP token>"}
     kaggle_id: str = DEFAULT_KAGGLE_ID                  # dataset-metadata.json "id"
-    gnaf_kaggle_id: str | None = None                   # flat G-NAF Kaggle dataset used in the join example
+    gnaf_kaggle_id: str = GNAF_KAGGLE_ID                # flat G-NAF Kaggle dataset used in the join examples
 
     @property
     def csv_ext(self) -> str:

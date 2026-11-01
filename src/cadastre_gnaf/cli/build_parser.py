@@ -1,6 +1,6 @@
 import argparse
 
-from cadastre_gnaf.constants import DEFAULT_KAGGLE_ID, DEFAULT_STATES, TOKEN_ENV_PREFIX
+from cadastre_gnaf.constants import DEFAULT_KAGGLE_ID, DEFAULT_STATES, GNAF_KAGGLE_ID, TOKEN_ENV_PREFIX
 
 EPILOG = """\
 examples:
@@ -44,6 +44,7 @@ def build_parser():
                          f"{TOKEN_ENV_PREFIX}<STATE> environment variable, which stays out of shell history")
     ap.add_argument("--kaggle-id", default=DEFAULT_KAGGLE_ID,
                     help="Kaggle dataset id (owner/slug) written to dataset-metadata.json and the README")
-    ap.add_argument("--gnaf-kaggle-id", default=None,
-                    help="Kaggle dataset with flat G-NAF (one CSV row per address) used in the README's join example")
+    ap.add_argument("--gnaf-kaggle-id", default=GNAF_KAGGLE_ID,
+                    help="Kaggle dataset with flat G-NAF (one row per address) linked from the README and used in its "
+                         "join examples")
     return ap

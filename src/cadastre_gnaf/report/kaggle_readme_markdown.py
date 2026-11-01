@@ -1,6 +1,6 @@
 import datetime as dt
 
-from cadastre_gnaf.constants import HARMONISED_COLUMNS, LEADING_COLUMNS, REPO_URL
+from cadastre_gnaf.constants import GNAF_KAGGLE_ID, HARMONISED_COLUMNS, LEADING_COLUMNS, REPO_URL
 from cadastre_gnaf.publish.mapping_markdown import mapping_markdown
 from cadastre_gnaf.report.descriptions import HARMONISED_COLUMNS as HARMONISED
 from cadastre_gnaf.report.descriptions import PARCEL_COLUMNS
@@ -18,7 +18,7 @@ def _pct(n, d):
     return "" if not n or not d else f"{n / d:.1%}"
 
 
-def _creation_markdown(gnaf_kaggle_id, gnaf_url, built):
+def _creation_markdown(gnaf_link, built):
     """The "How this dataset was created" section: the build pipeline, step by step."""
     return [
         "## How this dataset was created", "",
@@ -40,8 +40,7 @@ def _creation_markdown(gnaf_kaggle_id, gnaf_url, built):
         "writes it differently. From each parcel's attributes, several candidate keys were built in that format, "
         "for example NSW `13/31993` or `11/C/3625` and QLD `66/RP139841`.", "",
         "**3. Link G-NAF addresses.** The parcels were matched against the official G-NAF release (GDA2020, "
-        f"from [data.gov.au]({GNAF_DATA_GOV_URL}))"
-        + (f", the same release as [{gnaf_kaggle_id}]({gnaf_url})" if gnaf_kaggle_id else "") + ". "
+        f"from [data.gov.au]({GNAF_DATA_GOV_URL})), the same release as {gnaf_link}. "
         "Retired addresses were left out.", "",
         "- *Key join*: each parcel uses the first candidate key that exists in G-NAF (`gnaf_legal_parcel_id`, "
         "`gnaf_key_matched`). Every address with that key is linked to the parcel (method `legal_parcel_id`). "
@@ -67,20 +66,16 @@ def _creation_markdown(gnaf_kaggle_id, gnaf_url, built):
 
 
 def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None,
-                           gnaf_kaggle_id=None):
+                           gnaf_kaggle_id=GNAF_KAGGLE_ID):
     """README.md for the Kaggle dataset: contents, coverage, usage examples and licences.
 
     `files` comes from dataset_files, `summary` is the rows of summary.csv (dicts) and `attribution`
-    the ATTRIBUTION.md text, whose "- " source lines are copied in. `gnaf_kaggle_id` is the flat G-NAF
-    dataset (one CSV row per address, under `gnaf_csv/`) used in the join example; without it the
-    example uses a placeholder input name.
+    the ATTRIBUTION.md text, whose "- " source lines are copied in. `gnaf_kaggle_id` is the companion
+    G-NAF dataset (one row per address in `gnaf_full.parquet`, split by state in `gnaf_csv/`) that the
+    README links to and its join examples read.
     """
     built = built or dt.datetime.now()
-    slug = kaggle_id.split("/")[-1]
-    gnaf_slug = gnaf_kaggle_id.split("/")[-1] if gnaf_kaggle_id else "<flat-gnaf-dataset>"
-    gnaf_url = f"https://www.kaggle.com/datasets/{gnaf_kaggle_id}" if gnaf_kaggle_id else None
-    gnaf_ref = (f"the same G-NAF release as [{gnaf_kaggle_id}]({gnaf_url}), a flat copy of G-NAF"
-                if gnaf_kaggle_id else "a flat copy of G-NAF")
+    gnaf_link = f"[{gnaf_kaggle_id}](https://www.kaggle.com/datasets/{gnaf_kaggle_id})"
     parcels = [f for f in files if f["kind"] == "parcels"]
     states = [f["state"] for f in parcels]
     ex = "ACT" if "ACT" in states else min(parcels, key=lambda f: f["size_mb"])["state"] if parcels else "ACT"
@@ -92,6 +87,10 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
            "addresses "
            "(Geoscape's Geocoded National Address File), so it joins straight to any copy of G-NAF with no "
            "link table.", "",
+           f"**Companion dataset:** {gnaf_link} has the same G-NAF release with every address flattened to one "
+           "row: full address, street, locality, postcode, geocode and ABS mesh blocks. Add both datasets to a "
+           "notebook to go from a parcel to its addresses, or from an address to its parcel "
+           "(see [Join G-NAF addresses](#join-g-naf-addresses)).", "",
            f"Built with open-source code: [{REPO_URL.removeprefix('https://')}]({REPO_URL}).", "",
            "Each state is in its own files, and every file has the same layout. Each parcel row has:", "",
            "- harmonised columns that mean the same in every state: lot, section, plan, tenure, status, "
@@ -126,7 +125,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
                 "WA's public layer has geometry only, so WA addresses are linked spatially (address point inside "
                 "the parcel polygon) instead of by key.", ""]
 
-    out += _creation_markdown(gnaf_kaggle_id, gnaf_url, built)
+    out += _creation_markdown(gnaf_link, built)
     out += ["## Columns", "",
             "Every parcels file, for every state and in both formats, has the same layout:", "",
             "1. **Identity, G-NAF and geometry-group columns** (the same in every state)",
@@ -148,13 +147,14 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "in `data_dictionary.md` / `data_dictionary.csv`. The states' ObjectID copies and service-computed "
             "`Shape__Area` / `Shape__Length` fields are left out (see `source_oid`, `area_m2`, `perimeter_m`).", "",
             "## Using the data on Kaggle", "",
-            "Add this dataset to a notebook (**Add Input**), then:", "",
+            "Add this dataset to a notebook (**Add Input**). Kaggle mounts it at "
+            f"`/kaggle/input/datasets/{kaggle_id}`.", "",
             "### Load parcels without geometry (fast)", "",
             "Parquet reads only the columns you ask for. Leave out `wkt` unless you need the polygons:", "",
             "```python",
             "import pandas as pd",
             "",
-            f'DATA = "/kaggle/input/{slug}"',
+            f'DATA = "/kaggle/input/datasets/{kaggle_id}"',
             "",
             'cols = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_key_matched", "gnaf_address_count",',
             '        "gnaf_address_detail_pids", "point_lon", "point_lat"]',
@@ -179,28 +179,44 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "table above before comparing states (for example, only QLD, TAS and ACT have `tenure` for every "
             "parcel).", "",
             "### Join G-NAF addresses", "",
-            f"Join the addresses from {gnaf_ref} with one row per address (full address, locality, postcode, "
-            "geocode and more). Add it "
-            "to the notebook as a second input. `gnaf_address_detail_pids` is a list per parcel: explode it to "
-            "one row per address and merge:", "",
+            f"Add {gnaf_link} as a second input. It has one row per address: `gnaf_full.parquet` holds every "
+            "address, and `gnaf_csv/` the same rows split into one CSV per state and postcode district "
+            "(`gnaf_<STATE>_<area>.csv`, for example `gnaf_NSW_20xx.csv` for postcodes 2000–2099). Every column "
+            "is text, so ids and postcodes keep their leading zeros.", "",
+            "**From parcels to addresses.** `gnaf_address_detail_pids` is a list per parcel: explode it to one "
+            "row per address and merge. Reading only one state's CSVs keeps it light:", "",
             "```python",
             "import glob",
             "",
-            f'GNAF = "/kaggle/input/{gnaf_slug}/gnaf_csv"      # files gnaf_<STATE>_<postcode area>.csv',
+            f'GNAF = "/kaggle/input/datasets/{gnaf_kaggle_id}"',
             'gnaf_cols = ["address_detail_pid", "full_address", "locality_name", "postcode_effective",',
             '             "longitude", "latitude"]',
             "gnaf = pd.concat([pd.read_csv(f, usecols=gnaf_cols, dtype=str)",
-            f'                  for f in glob.glob(f"{{GNAF}}/gnaf_{ex}_*.csv")], ignore_index=True)',
+            f'                  for f in glob.glob(f"{{GNAF}}/gnaf_csv/gnaf_{ex}_*.csv")], ignore_index=True)',
             "",
             'parcel_addresses = (parcels.explode("gnaf_address_detail_pids")',
             '                           .merge(gnaf, how="left", left_on="gnaf_address_detail_pids",',
             '                                  right_on="address_detail_pid"))',
             'parcel_addresses[["source_oid", "gnaf_legal_parcel_id", "full_address", "locality_name"]].head()',
             "```", "",
-            "Parcels without an address keep one row with null address columns. Key-matched parcels can also be "
-            "joined on `gnaf_legal_parcel_id` = G-NAF's `legal_parcel_id`. The raw G-NAF tables (PSV, as "
-            "released by Geoscape) are on "
-            f"[data.gov.au]({GNAF_DATA_GOV_URL}).", "",
+            "Parcels without an address keep one row with null address columns.", "",
+            "**From the Parquet file.** `gnaf_full.parquet` has every state in one file. Select columns and "
+            "filter rows while reading:", "",
+            "```python",
+            'gnaf = pd.read_parquet(f"{GNAF}/gnaf_full.parquet", columns=gnaf_cols + ["legal_parcel_id"],',
+            f'                       filters=[("state_abbreviation", "==", "{ex}")])',
+            "```", "",
+            "**From an address to its parcel.** Explode once, then merge on the address id:", "",
+            "```python",
+            'pid_to_parcel = (parcels[["source_oid", "gnaf_address_detail_pids"]]',
+            '                 .explode("gnaf_address_detail_pids").dropna()',
+            '                 .rename(columns={"gnaf_address_detail_pids": "address_detail_pid"}))',
+            'address_parcels = gnaf.merge(pid_to_parcel, how="left", on="address_detail_pid")',
+            "```", "",
+            "An address on stacked strata lots gets one row per lot.", "",
+            "**By parcel key.** Key-matched parcels (`gnaf_key_matched`) also join on `gnaf_legal_parcel_id` = "
+            "G-NAF's `legal_parcel_id`, the key the pipeline joined on. The raw G-NAF tables are in "
+            f"`gnaf_tables/` of {gnaf_link}, and as released by Geoscape on [data.gov.au]({GNAF_DATA_GOV_URL}).", "",
             "### Addresses per parcel", "",
             "```python",
             'parcels["gnaf_address_count"].clip(upper=10).value_counts().sort_index().plot.bar(',

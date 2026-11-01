@@ -4,6 +4,10 @@ This builds the **Australian Cadastre + G-NAF** dataset: about 12.5 million land
 cadastres in one shared layout. Each parcel lists the ids of its G-NAF addresses (G-NAF is the Geocoded
 National Address File), so it joins straight to G-NAF without a separate link table.
 
+The companion Kaggle dataset [Australian Addresses (G-NAF)](https://www.kaggle.com/datasets/museofnephorion/australian-addresses-gnaf) is the same G-NAF release with every
+address flattened to one row. The dataset README links to it, and its join examples and the notebooks below read
+it.
+
 The command-line tool `cadastre-gnaf` builds the whole dataset:
 
 1. It downloads every parcel from the states' public ArcGIS REST services.
@@ -197,7 +201,7 @@ uv run kaggle datasets version -p cadastre_out --dir-mode zip -m "Refresh"   # l
 
 `--dir-mode zip` is required: the data files are in the `parquet/` and `csv/` subfolders, which the
 CLI skips by default. It zips each folder for the upload (the CSVs compress well), and Kaggle unpacks
-them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/<slug>/parquet/NSW_parcels.parquet`.
+them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/datasets/<owner>/<slug>/parquet/NSW_parcels.parquet`.
 
 `dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
 id, title, licence, the README as the dataset description, the sources (provenance), the expected update
@@ -216,8 +220,10 @@ uv run python -m kaggle datasets metadata --update -p cadastre_out <your-kaggle-
 
 Kaggle's usability score counts a public notebook that uses the dataset.
 [notebooks/getting_started.ipynb](notebooks/getting_started.ipynb) is one: it loads a state, compares states,
-plots a suburb's polygons and joins G-NAF addresses. To publish it, put it in a folder with a
-`kernel-metadata.json` like this one and run `uv run python -m kaggle kernels push -p <folder>`:
+plots a suburb's polygons, then joins the addresses of [Australian Addresses (G-NAF)](https://www.kaggle.com/datasets/museofnephorion/australian-addresses-gnaf) both ways
+(parcel → addresses and address → parcel) and maps them. Without the G-NAF input, the address cells say so and
+skip. To publish it, put it in a folder with a `kernel-metadata.json` like this one and run
+`uv run python -m kaggle kernels push -p <folder>`:
 
 ```json
 {
@@ -228,7 +234,8 @@ plots a suburb's polygons and joins G-NAF addresses. To publish it, put it in a 
   "kernel_type": "notebook",
   "is_private": false,
   "enable_internet": false,
-  "dataset_sources": ["<your-kaggle-username>/australian-cadastre-gnaf"]
+  "dataset_sources": ["<your-kaggle-username>/australian-cadastre-gnaf",
+                      "museofnephorion/australian-addresses-gnaf"]
 }
 ```
 
@@ -239,7 +246,8 @@ the data. It covers:
 
 - **Coverage:** parcels per state, and download completeness against each source's own count.
 - **Column completeness:** how filled each harmonised column is, per state.
-- **G-NAF linkage:** key matches, address coverage and link methods.
+- **G-NAF linkage:** key matches, address coverage and link methods. With the G-NAF dataset attached, it
+  also checks every linked address id against the release and measures how many addresses land on a parcel.
 - **The parcel population:** status, tenure, strata and roads.
 - **Data quality checks:** uniqueness, internal consistency, points inside Australia, area plausibility against
   the area on the title, and timeliness.
@@ -254,7 +262,8 @@ uv run --with jupyter --with matplotlib jupyter lab notebooks/coverage_and_quali
 ```
 
 Outside Kaggle it reads the folder in the `CADASTRE_DATA` environment variable, else `cadastre_out` in the current
-folder or the one above it.
+folder or the one above it. Both notebooks read the G-NAF dataset from the `GNAF_DATA` environment variable, for
+example `GNAF_DATA=../kaggle-au-gnaf/gnaf_out`.
 
 ### Parcel density map notebook
 
@@ -424,7 +433,7 @@ uv run python -m cadastre_gnaf --help                   # same CLI via the modul
 | `--local STATE=PATH` | none | Licensed file (any format geopandas reads) instead of a web service |
 | `--token STATE=TOKEN` | none | ArcGIS token for a subscription service (e.g. a SLIP layer). Prefer the `CADASTRE_TOKEN_<STATE>` environment variable (e.g. `CADASTRE_TOKEN_WA`), which keeps the token out of shell history; `--token` wins if both are set |
 | `--kaggle-id` | `your-kaggle-username/australian-cadastre-gnaf` | Kaggle dataset id written to `dataset-metadata.json` and used in the README's paths; set it to your own before uploading |
-| `--gnaf-kaggle-id` | none | Flat G-NAF Kaggle dataset (one CSV row per address) used in the dataset README's join example; without it the example uses a placeholder input name |
+| `--gnaf-kaggle-id` | `museofnephorion/australian-addresses-gnaf` | Flat G-NAF Kaggle dataset (one row per address) that the dataset README links to and its join examples read |
 
 The process exits with code 1 if any state failed to download. Re-run the same command to resume.
 

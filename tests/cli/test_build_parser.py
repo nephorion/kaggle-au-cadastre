@@ -9,7 +9,7 @@ def test_defaults():
     assert a.spatial_join == ["WA"] and a.local == [] and a.token == []
     assert not (a.compress or a.no_wkt or a.force)
     assert a.kaggle_id == "your-kaggle-username/australian-cadastre-gnaf"
-    assert a.gnaf_kaggle_id is None
+    assert a.gnaf_kaggle_id == "museofnephorion/australian-addresses-gnaf"
 
 
 def test_all_options():
