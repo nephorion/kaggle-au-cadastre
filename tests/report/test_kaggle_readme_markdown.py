@@ -106,3 +106,8 @@ def test_creation_process_documented_before_columns():
     for step in ("**1. Download", "**2. Build candidate", "**3. Link G-NAF", "**4. Harmonise", "**5. Document"):
         assert step in md[created:md.index("## Columns")]
     assert "(#how-this-dataset-was-created)" in md and "## How it was built" not in md
+
+
+def test_no_angle_brackets_because_kaggle_cuts_the_description_there():
+    md = readme()
+    assert "<" not in md and "| `gnaf_address_detail_pids` | list[string] |" in md

@@ -14,6 +14,11 @@ def _num(v):
     return "" if v is None else f"{int(v):,}"
 
 
+def _type(t):
+    """Column type for the README: Kaggle cuts the description off at the first "<", so list<string> -> list[string]."""
+    return t.replace("<", "[").replace(">", "]")
+
+
 def _pct(n, d):
     return "" if not n or not d else f"{n / d:.1%}"
 
@@ -137,10 +142,10 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "4. **`wkt`**: the polygon", "",
             "### 1. Identity, G-NAF and geometry groups", "",
             "| Column | Type | Description |", "|---|---|---|"]
-    out += [f"| `{c}` | {PARCEL_COLUMNS[c][0]} | {PARCEL_COLUMNS[c][1]} |" for c in LEADING_COLUMNS]
+    out += [f"| `{c}` | {_type(PARCEL_COLUMNS[c][0])} | {PARCEL_COLUMNS[c][1]} |" for c in LEADING_COLUMNS]
     out += ["", "### 2. Harmonised columns", "",
             "| Column | Type | Description |", "|---|---|---|"]
-    out += [f"| `{c}` | {HARMONISED[c][0]} | {HARMONISED[c][1]} |" for c in HARMONISED_COLUMNS]
+    out += [f"| `{c}` | {_type(HARMONISED[c][0])} | {HARMONISED[c][1]} |" for c in HARMONISED_COLUMNS]
     out += ["", "Where each harmonised column comes from, per state (`polygon` = computed from the geometry; "
             "– = not available, always null):", "", mapping_markdown(), "",
             "### 3. Source columns", "",
@@ -183,7 +188,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "### Join G-NAF addresses", "",
             f"Add {gnaf_link} as a second input. It has one row per address: `gnaf_full.parquet` holds every "
             "address, and `gnaf_csv/` the same rows split into one CSV per state and postcode district "
-            "(`gnaf_<STATE>_<area>.csv`, for example `gnaf_NSW_20xx.csv` for postcodes 2000–2099). Every column "
+            "(`gnaf_STATE_AREA.csv`, for example `gnaf_NSW_20xx.csv` for postcodes 2000–2099). Every column "
             "is text, so ids and postcodes keep their leading zeros.", "",
             "**From parcels to addresses.** `gnaf_address_detail_pids` is a list per parcel: explode it to one "
             "row per address and merge. Reading only one state's CSVs keeps it light:", "",
