@@ -75,6 +75,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
     README links to and its join examples read.
     """
     built = built or dt.datetime.now()
+    slug, gnaf_slug = kaggle_id.split("/")[-1], gnaf_kaggle_id.split("/")[-1]
     gnaf_link = f"[{gnaf_kaggle_id}](https://www.kaggle.com/datasets/{gnaf_kaggle_id})"
     parcels = [f for f in files if f["kind"] == "parcels"]
     states = [f["state"] for f in parcels]
@@ -147,14 +148,17 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "in `data_dictionary.md` / `data_dictionary.csv`. The states' ObjectID copies and service-computed "
             "`Shape__Area` / `Shape__Length` fields are left out (see `source_oid`, `area_m2`, `perimeter_m`).", "",
             "## Using the data on Kaggle", "",
-            "Add this dataset to a notebook (**Add Input**). Kaggle mounts it at "
-            f"`/kaggle/input/datasets/{kaggle_id}`.", "",
+            "Add this dataset to a notebook (**Add Input**). Kaggle mounts an input at "
+            f"`/kaggle/input/datasets/{kaggle_id}` or at `/kaggle/input/{slug}`, depending on the notebook, so "
+            "the examples look the folder up by name.", "",
             "### Load parcels without geometry (fast)", "",
             "Parquet reads only the columns you ask for. Leave out `wkt` unless you need the polygons:", "",
             "```python",
+            "import glob",
+            "",
             "import pandas as pd",
             "",
-            f'DATA = "/kaggle/input/datasets/{kaggle_id}"',
+            f'DATA = glob.glob("/kaggle/input/**/{slug}", recursive=True)[0]',
             "",
             'cols = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_key_matched", "gnaf_address_count",',
             '        "gnaf_address_detail_pids", "point_lon", "point_lat"]',
@@ -164,8 +168,6 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "### All states in one table", "",
             "The identity, G-NAF and harmonised columns are the same in every file, so states stack directly:", "",
             "```python",
-            "import glob",
-            "",
             'common = ["state", "source_oid", "gnaf_legal_parcel_id", "gnaf_address_count", "lot", "plan",',
             '          "parcel_label", "status", "tenure", "is_strata", "area_m2", "locality"]',
             'files = sorted(glob.glob(f"{DATA}/parquet/*_parcels.parquet"))',
@@ -186,9 +188,7 @@ def kaggle_readme_markdown(files, summary, kaggle_id, attribution="", built=None
             "**From parcels to addresses.** `gnaf_address_detail_pids` is a list per parcel: explode it to one "
             "row per address and merge. Reading only one state's CSVs keeps it light:", "",
             "```python",
-            "import glob",
-            "",
-            f'GNAF = "/kaggle/input/datasets/{gnaf_kaggle_id}"',
+            f'GNAF = glob.glob("/kaggle/input/**/{gnaf_slug}", recursive=True)[0]',
             'gnaf_cols = ["address_detail_pid", "full_address", "locality_name", "postcode_effective",',
             '             "longitude", "latitude"]',
             "gnaf = pd.concat([pd.read_csv(f, usecols=gnaf_cols, dtype=str)",

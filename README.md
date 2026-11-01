@@ -201,7 +201,9 @@ uv run kaggle datasets version -p cadastre_out --dir-mode zip -m "Refresh"   # l
 
 `--dir-mode zip` is required: the data files are in the `parquet/` and `csv/` subfolders, which the
 CLI skips by default. It zips each folder for the upload (the CSVs compress well), and Kaggle unpacks
-them back into `parquet/` and `csv/`, so notebooks read `/kaggle/input/datasets/<owner>/<slug>/parquet/NSW_parcels.parquet`.
+them back into `parquet/` and `csv/`, so notebooks read `<input>/parquet/NSW_parcels.parquet`. The input folder is
+`/kaggle/input/datasets/<owner>/<slug>` or `/kaggle/input/<slug>` depending on the notebook, so the
+examples and notebooks look it up by name instead of hard-coding it.
 
 `dataset-metadata.json` is what the CLI reads, and `kaggle datasets create` requires it: the dataset
 id, title, licence, the README as the dataset description, the sources (provenance), the expected update
